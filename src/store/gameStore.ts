@@ -86,6 +86,9 @@ export interface SaveData {
   mode: 'hotel' | 'mundo';
   hotelRooms: HotelRoom[];
   hotelLast: string;
+  hotelGifts: string[];
+  hotelGiftDay: string;
+  hotelSeed: number;
 }
 
 interface Transient {
@@ -190,6 +193,9 @@ export const initialSave = (): SaveData => ({
   mode: 'hotel',
   hotelRooms: [starterRoom()],
   hotelLast: 'quarto-maite',
+  hotelGifts: [],
+  hotelGiftDay: '',
+  hotelSeed: 0,
 });
 
 export const SAVE_KEYS = Object.keys(initialSave()) as (keyof SaveData)[];

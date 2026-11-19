@@ -116,6 +116,7 @@ export function drawScene(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom
   } });
   for (const b of hs.bots) ents.push({ depth: b.x + b.y + 0.6, draw: () => avatar(b, b.look, null) });
   if (pet && !hs.mounted) ents.push({ depth: hs.pet.x + hs.pet.y + 0.55, draw: () => { const p = iso(cam, hs.pet.x + 0.5, hs.pet.y + 0.5); drawPet(g, p.x, p.y, pet.species, pet.color, hs.pet.dir, t, hs.pet.moving, t < hs.pet.happyUntil); } });
+  for (const rp of hs.roomPets) ents.push({ depth: rp.x + rp.y + 0.5, draw: () => { const p = iso(cam, rp.x + 0.5, rp.y + 0.5); drawPet(g, p.x, p.y, rp.species, rp.color, rp.dir, t, rp.moving, t < rp.happyUntil); } });
   ents.sort((a, b) => a.depth - b.depth).forEach((e) => e.draw());
   // fantasma ao colocar/mover
   if ((hs.mode === 'place' || hs.mode === 'move') && hs.ghost) {

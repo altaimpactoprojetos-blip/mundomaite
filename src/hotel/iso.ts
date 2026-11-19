@@ -20,10 +20,15 @@ export function shade(hex: string, f: number): string {
   const k = hex + f;
   const c = shadeCache.get(k);
   if (c) return c;
-  let h = hex.replace('#', '');
-  if (h.length === 3) h = h.split('').map((x) => x + x).join('');
-  const n = parseInt(h, 16);
-  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  let r: number, g: number, b: number;
+  if (hex.startsWith('rgb')) {
+    [r, g, b] = hex.replace(/[^\d,]/g, '').split(',').map(Number);
+  } else {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+    const n = parseInt(h, 16);
+    r = (n >> 16) & 255; g = (n >> 8) & 255; b = n & 255;
+  }
   if (f < 1) { r *= f; g *= f; b *= f; } else { r += (255 - r) * (f - 1); g += (255 - g) * (f - 1); b += (255 - b) * (f - 1); }
   const out = `rgb(${r | 0},${g | 0},${b | 0})`;
   shadeCache.set(k, out);

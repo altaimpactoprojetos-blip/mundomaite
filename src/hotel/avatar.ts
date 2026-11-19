@@ -197,6 +197,35 @@ export function drawPet(g: CanvasRenderingContext2D, x: number, y: number, speci
     mane.forEach((m, i) => R(g, 9 - i * 1.2, -35 + i * 4 + Math.round(Math.sin(t * 4 + i)), 3, 4, m, false));
     R(g, -4, -22, 9, 2, '#e63946', false);
   } else {
+    if (species === 'vaca' || species === 'porco' || species === 'ovelha') {
+      const body = species === 'vaca' ? '#ffffff' : species === 'porco' ? '#ffb3c6' : '#f4f1ec';
+      for (const [lx, o] of [[-8, leg], [-4, -leg], [4, leg], [8, -leg]] as const) R(g, lx - 1, -8 + o * 0, 3, 8, species === 'ovelha' ? '#555a66' : body);
+      if (species === 'ovelha') { for (let i = 0; i < 6; i++) E(g, -7 + (i % 3) * 6, -12 + Math.floor(i / 3) * 4, 5, 4, '#ffffff'); }
+      else E(g, 0, -11, 12, 6, body);
+      if (species === 'vaca') { g.fillStyle = '#2b2d42'; g.fillRect(-6, -14, 5, 4); g.fillRect(3, -10, 4, 3); }
+      E(g, 11, -14, 5, 4.5, species === 'ovelha' ? '#555a66' : body);
+      E(g, 15, -12, 3, 2.5, species === 'porco' ? '#ff8fb1' : '#ffc2d9');
+      g.fillStyle = '#2b1a3a'; g.fillRect(11, -16, 1, 2);
+      if (species === 'vaca') { g.fillStyle = '#ffe7a6'; g.fillRect(8, -21, 2, 3); g.fillRect(12, -21, 2, 3); }
+      g.restore();
+      return;
+    }
+    if (species === 'galinha') {
+      R(g, -1, -4, 1, 4, '#ffa94d', false); R(g, 2, -4, 1, 4, '#ffa94d', false);
+      E(g, 0, -8, 5, 4, '#ffffff'); E(g, 4, -13, 3, 3, '#ffffff');
+      g.fillStyle = '#e63946'; g.fillRect(3, -17, 3, 2); g.fillStyle = '#ffa94d'; g.fillRect(7, -13, 2, 1); g.fillStyle = '#222'; g.fillRect(5, -14, 1, 1);
+      g.restore();
+      return;
+    }
+    if (species === 'coelho') {
+      E(g, 0, -6, 6, 5, color); E(g, 5, -11, 4.5, 4.5, color);
+      R(g, 3, -22, 2, 8, color); R(g, 6, -22, 2, 8, color);
+      g.fillStyle = '#ffb3c6'; g.fillRect(3.5, -20, 1, 5); g.fillRect(6.5, -20, 1, 5);
+      g.fillStyle = '#2b1a3a'; g.fillRect(6, -12, 1, 2);
+      E(g, -6, -6, 2.5, 2.5, '#ffffff');
+      g.restore();
+      return;
+    }
     const cat = species === 'gato';
     R(g, -5, -6, 2, 6 + 0, color); R(g, 3, -6, 2, 6, color);
     E(g, 0, -8, 7, 4, color);

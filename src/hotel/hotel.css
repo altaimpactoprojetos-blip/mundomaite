@@ -19,3 +19,4 @@
   .h-tool span { font-size: 18px; }
   .h-menu { bottom: calc(62px + var(--safe-b)); }
 }
+.h-tool.gift { background: linear-gradient(#ffe680,#ffd23f); animation: float 1.4s infinite; }

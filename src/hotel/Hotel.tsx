@@ -3,8 +3,11 @@ import { useGame } from '../store/gameStore';
 import { hs, currentRoom, isOwn, enterRoom, stepWalker, walkTo, walkNear, faceTo, say, hearts, botReply, updateRoom, occupancy, floorItemAt, newRoomId } from './engine';
 import { roomCam, drawScene } from './render';
 import { tileAt, TW, TH, WALL_H, iso } from './iso';
-import { FURNI, FURNI_CATS, FURNI_MAP, dims, type FurniCat, type PFurni } from './furni';
-import { PUBLIC_ROOMS, starterRoom, type HotelRoom } from './rooms';
+import { FURNI, FURNI_CATS, FURNI_MAP, dims, CROP_TIME, type FurniCat, type PFurni } from './furni';
+import { PUBLIC_ROOMS, starterRoom, extraRooms, TEMPLATES, FRIENDS, type HotelRoom } from './rooms';
+import { PhotosPanel } from '../ui/MiscPanels';
+import { todayKey } from '../data/quests';
+import { botLook } from './engine';
 import { drawAvatar } from './avatar';
 import { sfx, unlockAudio, startMusic } from '../systems/audio';
 import { PETS } from '../data/pets';
@@ -25,7 +28,8 @@ export function Hotel() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const low = useMemo(() => document.createElement('canvas'), []);
   const screen = useGame((s) => s.screen);
-  const [panel, setPanel] = useState<null | 'nav' | 'cat' | 'look' | 'room'>(null);
+  const [panel, setPanel] = useState<null | 'nav' | 'cat' | 'look' | 'room' | 'invite' | 'gift'>(null);
+  const giftDay = useGame((s) => s.hotelGiftDay);
   const [menu, setMenu] = useState<null | { kind: 'furni' | 'bot' | 'pet'; id: string }>(null);
   const [, force] = useState(0);
   const [chat, setChat] = useState('');
@@ -37,6 +41,10 @@ export function Hotel() {
     const s = useGame.getState();
     if (!s.pets.length) { const p = s.adoptPet('unicornio', '#ffffff'); s.updatePet(p.id, { name: 'Purpurina', accessory: 'laco', accColor: '#ff5fa2' }); }
     if (!s.hotelRooms.length) s.set({ hotelRooms: [starterRoom()] });
+    if ((s.hotelSeed ?? 0) < 2) {
+      const have = new Set(useGame.getState().hotelRooms.map((r) => r.id));
+      useGame.getState().set({ hotelRooms: [...useGame.getState().hotelRooms, ...extraRooms().filter((r) => !have.has(r.id))], hotelSeed: 2 });
+    }
     const last = useGame.getState().hotelLast;
     enterRoom(PUBLIC_ROOMS.some((r) => r.id === last) || useGame.getState().hotelRooms.some((r) => r.id === last) ? last : useGame.getState().hotelRooms[0].id);
   }, []);
@@ -97,6 +105,17 @@ export function Hotel() {
     if (P.moving) { P.x += (dx / d) * Math.min(d - 1.2, 3.8 * dt); P.y += (dy / d) * Math.min(d - 1.2, 3.8 * dt); P.dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 0 : 2) : dy > 0 ? 1 : 3; }
     // personagens do hotel
     const room = currentRoom();
+    for (const rp of hs.roomPets) {
+      const ddx = rp.tx - rp.x, ddy = rp.ty - rp.y, dd = Math.hypot(ddx, ddy);
+      rp.moving = dd > 0.05;
+      if (rp.moving) { const st = Math.min(dd, 1.6 * dt); rp.x += (ddx / dd) * st; rp.y += (ddy / dd) * st; rp.dir = Math.abs(ddx) >= Math.abs(ddy) ? (ddx > 0 ? 0 : 2) : ddy > 0 ? 1 : 3; }
+      else if (hs.t > rp.next) {
+        rp.next = hs.t + 2 + Math.random() * 4;
+        const occ = occupancy(room);
+        const nx = Math.max(0, Math.min(room.w - 1, Math.round(rp.x + (Math.random() - 0.5) * 4))), ny = Math.max(0, Math.min(room.h - 1, Math.round(rp.y + (Math.random() - 0.5) * 4)));
+        if (!occ.has(`${nx},${ny}`)) { rp.tx = nx; rp.ty = ny; }
+      }
+    }
     for (const b of hs.bots) {
       const mv = stepWalker(b, dt, 2.2);
       const onDance = floorItemAt(room, Math.round(b.x), Math.round(b.y))?.type === 'pista-danca';
@@ -232,6 +251,8 @@ export function Hotel() {
     // personagem
     const bot = hs.bots.find((b) => Math.hypot(b.x - tx, b.y - ty) < 0.9);
     if (bot) { walkNear(hs.me, Math.round(bot.x), Math.round(bot.y), 1, 1, () => { faceTo(hs.me, bot.x, bot.y); setMenu({ kind: 'bot', id: bot.def.id }); }); return; }
+    const rpet = hs.roomPets.find((p) => Math.hypot(p.x - tx, p.y - ty) < 0.9);
+    if (rpet) { walkNear(hs.me, Math.round(rpet.x), Math.round(rpet.y), 1, 1, () => { rpet.happyUntil = hs.t + 3; hearts(rpet.x, rpet.y); faceTo(hs.me, rpet.x, rpet.y); hs.me.emote = 'hug'; hs.me.emoteUntil = hs.t + 1.5; say('me', nameOf(), rpet.species === 'gato' ? 'Que gatinho fofo! 🐱' : rpet.species === 'coelho' ? 'Coelhinho lindo! 🐰' : 'Oi, cachorrinho! 🐶'); sfx(rpet.species === 'gato' ? 'meow' : rpet.species === 'cachorro' ? 'bark' : 'sparkle'); }); return; }
     // pet
     const pet = activePet();
     if (pet && !hs.mounted && Math.hypot(hs.pet.x - tx, hs.pet.y - ty) < 1) { setMenu({ kind: 'pet', id: pet.id }); return; }
@@ -258,6 +279,20 @@ export function Hotel() {
     walkNear(hs.me, f.x, f.y, W, D, () => {
       faceTo(hs.me, f.x + W / 2, f.y + D / 2);
       if (d.use === 'toggle') { updateRoom((r) => ({ ...r, furni: r.furni.map((x) => (x.uid === f.uid ? { ...x, on: !x.on } : x)) })); if (!isOwn()) { const pf = currentRoom().furni.find((x) => x.uid === f.uid); if (pf) pf.on = !pf.on; } sfx(f.type === 'piano' ? 'note' : 'click', 1 + Math.random()); }
+      if (d.use === 'look') { setPanel('look'); return; }
+      if (d.use === 'farm') {
+        const cur = currentRoom().furni.find((x) => x.uid === f.uid);
+        const grown = cur?.t0 && (Date.now() - cur.t0) / 1000 >= CROP_TIME;
+        const nt0 = !cur?.t0 ? Date.now() : grown ? undefined : cur.t0;
+        if (isOwn()) updateRoom((r) => ({ ...r, furni: r.furni.map((x) => (x.uid === f.uid ? { ...x, t0: nt0 } : x)) }));
+        else if (cur) cur.t0 = nt0;
+        hs.me.emote = 'hug'; hs.me.emoteUntil = hs.t + 1;
+        if (!cur?.t0) { say('me', nameOf(), 'Plantei uma sementinha! 🌱'); sfx('pop'); }
+        else if (grown) { say('me', nameOf(), 'Colhi! Que delícia! 🥕🍓'); hearts(f.x, f.y); sfx('coin'); useGame.getState().track('harvest'); }
+        else { say('me', nameOf(), `Ainda está crescendo... ⏳`); }
+        return;
+      }
+      if (d.use === 'jump') { hs.me.emote = 'dance'; hs.me.emoteUntil = hs.t + 2; hearts(hs.me.x, hs.me.y); sfx('jump', 1.4); return; }
       if (d.use === 'snack') { hs.held = 'sorvete'; say('me', nameOf(), 'Hmm, que delícia! 😋'); sfx('pop'); }
     });
   }
@@ -276,6 +311,17 @@ export function Hotel() {
     if (near) setTimeout(() => { say(near.def.id, near.def.name, botReply(tx, near)); faceTo(near, hs.me.x, hs.me.y); if (/dan[cç]/i.test(tx)) { near.emote = 'dance'; near.emoteUntil = hs.t + 8; } }, 900 + Math.random() * 700);
   }
 
+  const photo = () => {
+    const c = canvas.current;
+    if (!c) return;
+    const W = 720, H = Math.round((c.height / c.width) * W);
+    const off = document.createElement('canvas'); off.width = W; off.height = H;
+    const g = off.getContext('2d')!; g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(0, H - 34, W, 34); g.fillStyle = '#e83e8c'; g.font = 'bold 20px sans-serif'; g.fillText(`📸 Hotel da Maitê · ${currentRoom().name}`, 12, H - 11);
+    useGame.getState().addPhoto(off.toDataURL('image/jpeg', 0.8), currentRoom().name);
+    sfx('camera');
+    toast('Foto do quarto guardada no álbum! 📸');
+  };
   const emote = (a: 'dance' | 'wave' | 'hug', secs = 4) => { hs.me.seat = null; hs.me.emote = a; hs.me.emoteUntil = hs.t + secs; if (a === 'hug') hearts(hs.me.x, hs.me.y); sfx('pop'); };
   const room = currentRoom();
   const own = isOwn();
@@ -305,7 +351,11 @@ export function Hotel() {
             <button className="h-tool" onClick={() => setPanel('cat')}><span>🛍️</span>Catálogo</button>
             <button className="h-tool" onClick={() => setPanel('look')}><span>👗</span>Visual</button>
             {own && <button className="h-tool" onClick={() => setPanel('room')}><span>🎨</span>Quarto</button>}
+            {own && <button className="h-tool" onClick={() => setPanel('invite')}><span>👭</span>Convidar</button>}
             <button className="h-tool" onClick={() => emote('dance', 10)}><span>💃</span>Dançar</button>
+            <button className="h-tool" onClick={photo}><span>📸</span>Foto</button>
+            <button className="h-tool" onClick={() => useGame.getState().openPanel('photos')}><span>🖼️</span>Álbum</button>
+            {giftDay !== todayKey() && <button className="h-tool gift" onClick={() => setPanel('gift')}><span>🎁</span>Presente</button>}
             <button className="h-tool" onClick={() => emote('wave', 2.5)}><span>👋</span>Oi</button>
             <form className="h-chat" onSubmit={(e) => { e.preventDefault(); sendChat(chat); }}>
               <input value={chat} maxLength={80} placeholder="Escreva algo..." onChange={(e) => setChat(e.target.value)} />
@@ -318,6 +368,9 @@ export function Hotel() {
           {panel === 'room' && own && <RoomSettings close={() => setPanel(null)} />}
           {storePanel === 'settings' && <SettingsPanel />}
           {storePanel === 'help' && <HelpPanel />}
+          {storePanel === 'photos' && <PhotosPanel />}
+          {panel === 'invite' && <Invite close={() => setPanel(null)} />}
+          {panel === 'gift' && <DailyGift close={() => setPanel(null)} />}
         </>
       )}
     </div>
@@ -384,12 +437,18 @@ function Navigator({ close }: { close: () => void }) {
           <div className="section">Meus quartos</div>
           <div className="grid">
             {rooms.map((r) => <button key={r.id} className={`card ${r.id === hs.roomId ? 'on' : ''}`} onClick={() => go(r.id)}><div className="ic">🏠</div><div className="nm">{r.name}</div><div className="muted" style={{ fontSize: 11 }}>{r.w}×{r.h}</div></button>)}
-            <button className="card" onClick={() => {
-              const id = newRoomId();
-              const nr: HotelRoom = { id, name: `Quarto novo ${rooms.length + 1}`, w: 8, h: 8, floor: '#e8d5b7', floorPat: 'madeira', wall: '#c7e5ff', wallPat: 'liso', door: 4, furni: [] };
-              useGame.getState().set({ hotelRooms: [...rooms, nr] });
-              enterRoom(id); close();
-            }}><div className="ic">➕</div><div className="nm">Criar quarto</div></button>
+          </div>
+          <div className="section">Criar um quarto novo</div>
+          <div className="grid">
+            {TEMPLATES.map((tp) => (
+              <button key={tp.id} className="card" onClick={() => {
+                const id = newRoomId();
+                const nr: HotelRoom = { id, name: `${tp.name} ${rooms.length + 1}`, w: 8, h: 8, floor: '#e8d5b7', floorPat: 'madeira', wall: '#c7e5ff', wallPat: 'liso', door: 4, furni: [], ...tp.make() } as HotelRoom;
+                nr.furni = nr.furni.map((f) => ({ ...f, uid: newRoomId() }));
+                useGame.getState().set({ hotelRooms: [...rooms, nr] });
+                enterRoom(id); close();
+              }}><div className="ic">{tp.icon}</div><div className="nm">{tp.name}</div><div className="muted" style={{ fontSize: 11 }}>➕ criar</div></button>
+            ))}
           </div>
           <div className="section">Lugares do Hotel</div>
           <div className="grid">
@@ -431,6 +490,7 @@ function thumb(type: string, color: string) {
 function Catalog({ close, start }: { close: () => void; start: (type: string, color: string) => void }) {
   const [cat, setCat] = useState<FurniCat>('quarto');
   const [color, setColor] = useState<string | null>(null);
+  const gifts = useGame((s) => s.hotelGifts);
   return (
     <div className="backdrop" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
       <div className="panel" style={{ width: 'min(980px, 100%)' }} onPointerDown={(e) => e.stopPropagation()}>
@@ -442,7 +502,8 @@ function Catalog({ close, start }: { close: () => void; start: (type: string, co
             <div className="swatches">{BUILD_COLORS.slice(0, 16).map((c) => <button key={c} className={`sw ${c === color ? 'on' : ''}`} style={{ background: c, width: 26, height: 26 }} onClick={() => setColor(c)} />)}</div>
           </div>
           <div className="grid">
-            {FURNI.filter((f) => f.cat === cat).map((f) => (
+            {cat === 'presentes' && <p className="muted" style={{ gridColumn: '1/-1' }}>🎁 Todo dia tem um presente surpresa com um móvel exclusivo! Toque em 🎁 Presente na barra.</p>}
+            {FURNI.filter((f) => f.cat === cat && (!f.gift || gifts.includes(f.id))).map((f) => (
               <button key={f.id} className="card" onClick={() => start(f.id, color ?? f.color)}>
                 <img src={thumb(f.id, color ?? f.color)} alt="" style={{ width: 64, height: 64, imageRendering: 'pixelated' }} />
                 <div className="nm">{f.name}</div>
@@ -575,3 +636,64 @@ function HotelTitle() {
 }
 
 export { occupancy };
+
+// ------------------------- convidar amigas -------------------------
+function Invite({ close }: { close: () => void }) {
+  const list = FRIENDS();
+  return (
+    <div className="backdrop" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <div className="panel" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="panel-head"><span style={{ fontSize: 30 }}>👭</span><h2>Convidar para o quarto</h2><button className="close" onClick={close}>✖</button></div>
+        <div className="panel-body">
+          <p className="muted">As amigas do hotel vêm visitar seu quarto! (Só personagens do jogo, nada de estranhos 💕)</p>
+          <div className="grid">
+            {list.map((b) => {
+              const here = hs.bots.some((x) => x.def.id === b.id);
+              return (
+                <button key={b.id} className={`card ${here ? 'on' : ''}`} onClick={() => {
+                  if (here) { hs.bots = hs.bots.filter((x) => x.def.id !== b.id); return close(); }
+                  const room = currentRoom();
+                  hs.bots.push({ def: b, look: botLook(b), x: 0, y: room.door, path: [], dir: 0, anim: 'idle', emote: null, emoteUntil: 0, seat: null, arrive: null, next: hs.t + 1, talkAt: hs.t + 2 });
+                  walkTo(hs.bots[hs.bots.length - 1], 1 + Math.floor(Math.random() * (room.w - 2)), 1 + Math.floor(Math.random() * (room.h - 2)));
+                  setTimeout(() => say(b.id, b.name, 'Oiê! Que quarto lindo! 😍'), 1200);
+                  sfx('door');
+                  close();
+                }}>
+                  <div className="ic">{here ? '✅' : '🙋'}</div><div className="nm">{b.name}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ------------------------- presente do dia -------------------------
+function DailyGift({ close }: { close: () => void }) {
+  const [opened, setOpened] = useState<string | null>(null);
+  const open = () => {
+    const s = useGame.getState();
+    const pool = FURNI.filter((f) => f.gift && !s.hotelGifts.includes(f.id));
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    s.set({ hotelGiftDay: todayKey(), hotelGifts: pick ? [...s.hotelGifts, pick.id] : s.hotelGifts });
+    setOpened(pick ? pick.name : 'Muitos corações de amor! 💖');
+    sfx('fanfare');
+    hearts(hs.me.x, hs.me.y);
+  };
+  return (
+    <div className="backdrop">
+      <div className="panel" style={{ width: 'min(420px,100%)' }} onPointerDown={(e) => e.stopPropagation()}>
+        <div className="panel-head"><span style={{ fontSize: 30 }}>🎁</span><h2>Presente do dia</h2><button className="close" onClick={close}>✖</button></div>
+        <div className="panel-body mg">
+          {!opened ? (
+            <><button style={{ fontSize: 110, background: 'none', animation: 'float 1.2s infinite' }} onClick={open}>🎁</button><div style={{ fontWeight: 800 }}>Toque no presente para abrir!</div></>
+          ) : (
+            <><div style={{ fontSize: 80 }}>🎉</div><div className="bubble">Você ganhou: <b>{opened}</b>! Está no Catálogo → 🎁 Presentes.</div><button className="btn pink" onClick={close}>Obaaa! 💖</button></>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

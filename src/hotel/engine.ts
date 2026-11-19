@@ -18,6 +18,7 @@ export const hs = {
   held: null as string | null,
   pet: { x: 1, y: 1, dir: 0, moving: false, happyUntil: 0 },
   bots: [] as Bot[],
+  roomPets: [] as { species: string; color: string; x: number; y: number; tx: number; ty: number; dir: number; moving: boolean; happyUntil: number; next: number }[],
   bubbles: [] as Bubble[],
   hearts: [] as { x: number; y: number; t0: number }[],
   zoom: 0,
@@ -199,6 +200,7 @@ export function enterRoom(id: string) {
     if (def.job) { const bal = room.furni.find((f) => f.type === 'balcao'); if (bal) p = { x: bal.x + 1, y: bal.y + 1 }; }
     return { def, look: botLook(def), x: p.x, y: p.y, path: [], dir: 1, anim: 'idle' as HAnim, emote: null, emoteUntil: 0, seat: null, arrive: null, next: hs.t + 2 + Math.random() * 4, talkAt: hs.t + 3 + Math.random() * 6 };
   });
+  hs.roomPets = (room.pets ?? []).map((p) => { const f = freeTile(); return { ...p, x: f.x, y: f.y, tx: f.x, ty: f.y, dir: 1, moving: false, happyUntil: 0, next: hs.t + Math.random() * 3 }; });
   useGame.getState().set({ hotelLast: id });
   sfx('door');
   if (room.bots?.length) setTimeout(() => { const b = hs.bots[0]; if (b) say(b.def.id, b.def.name, room.pub ? `Bem-vinda ao ${room.name}! 💕` : 'Oi!'); }, 900);
