@@ -68,18 +68,26 @@ export function Hotel() {
         const fit = Math.max(1, Math.floor(Math.min(W / roomPxW, H / roomPxH) * 2) / 2);
         const scale = Math.max(1, Math.min(8, fit + hs.zoom));
         const lw = Math.ceil(W / scale), lh = Math.ceil(H / scale);
-        if (low.width !== lw || low.height !== lh) { low.width = lw; low.height = lh; }
+        const SS = 2; // dobro de definição no desenho
+        if (low.width !== lw * SS || low.height !== lh * SS) { low.width = lw * SS; low.height = lh * SS; }
         const g = low.getContext('2d')!;
+        g.setTransform(SS, 0, 0, SS, 0, 0);
         g.imageSmoothingEnabled = false;
         const bg = g.createLinearGradient(0, 0, 0, lh);
         bg.addColorStop(0, '#1e2a5a'); bg.addColorStop(1, '#3a2a6a');
         g.fillStyle = bg; g.fillRect(0, 0, lw, lh);
+        // estrelinhas no fundo
+        for (let i = 0; i < 40; i++) { const sx = (i * 97) % lw, sy = (i * 53) % lh; g.fillStyle = `rgba(255,255,255,${0.15 + 0.25 * Math.abs(Math.sin(hs.t * 0.8 + i))})`; g.fillRect(sx, sy, 1, 1); }
         const cam = roomCam(room, lw, lh, hs.pan);
         geom.current = { scale, cam, lw, lh };
         drawScene(g, cam, room, useGame.getState().appearance, hs.t, activePet());
         const out = c.getContext('2d')!;
-        out.imageSmoothingEnabled = false;
+        out.imageSmoothingEnabled = scale / SS < 1;
         out.drawImage(low, 0, 0, lw * scale, lh * scale);
+        // vinheta suave nas bordas
+        const vg = out.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.75);
+        vg.addColorStop(0, 'rgba(10,5,30,0)'); vg.addColorStop(1, 'rgba(10,5,30,0.35)');
+        out.fillStyle = vg; out.fillRect(0, 0, W, H);
         drawBubbles(out, cam, scale, dpr);
       }
       raf = requestAnimationFrame(loop);

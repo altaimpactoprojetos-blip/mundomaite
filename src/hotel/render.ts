@@ -1,4 +1,5 @@
 import { iso, poly, shade, tile, box, type Cam, TW, TH, WALL_H } from './iso';
+void TW;
 import { FURNI_MAP, dims, drawWallItem, type PFurni } from './furni';
 import type { HotelRoom } from './rooms';
 import { drawAvatar, drawPet } from './avatar';
@@ -42,6 +43,15 @@ function drawWalls(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom) {
     }
   }
   g.restore();
+  // sombreamento: mais escuro embaixo e no canto
+  const top0 = iso(cam, 0, 0, WALL_H), bot0 = iso(cam, 0, 0, 0);
+  const vg = g.createLinearGradient(0, top0.y, 0, bot0.y + (Math.max(w, h) * TH) / 2);
+  vg.addColorStop(0, 'rgba(255,255,255,0.10)'); vg.addColorStop(0.5, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.16)');
+  poly(g, [iso(cam, 0, 0, WALL_H), iso(cam, 0, h, WALL_H), iso(cam, 0, h, 0), iso(cam, 0, 0, 0)], vg);
+  poly(g, [iso(cam, 0, 0, WALL_H), iso(cam, w, 0, WALL_H), iso(cam, w, 0, 0), iso(cam, 0, 0, 0)], vg);
+  const cg = g.createLinearGradient(top0.x - 14, 0, top0.x + 14, 0);
+  cg.addColorStop(0, 'rgba(0,0,0,0)'); cg.addColorStop(0.5, 'rgba(0,0,0,0.16)'); cg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = cg; g.fillRect(top0.x - 14, top0.y, 28, bot0.y - top0.y);
   // rodapé
   poly(g, [iso(cam, 0, 0, 4), iso(cam, 0, h, 4), iso(cam, 0, h, 0), iso(cam, 0, 0, 0)], shade(lc, 0.7));
   poly(g, [iso(cam, 0, 0, 4), iso(cam, w, 0, 4), iso(cam, w, 0, 0), iso(cam, 0, 0, 0)], shade(rc, 0.7));
@@ -66,16 +76,31 @@ function drawFloor(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom) {
     let c = room.floor;
     if (room.floorPat === 'xadrez' && (x + y) % 2) c = shade(c, 0.88);
     if (room.floorPat === 'listras' && x % 2) c = shade(c, 0.92);
+    // pequenas variações de tom (piso menos chapado)
+    const hsh = ((x * 73856093) ^ (y * 19349663)) & 7;
+    if (hsh < 3) c = shade(c, hsh === 0 ? 0.96 : hsh === 1 ? 1.06 : 0.98);
     tile(g, cam, x, y, c, shade(room.floor, 0.82));
     if (room.floorPat === 'madeira') {
       g.strokeStyle = shade(room.floor, 0.86);
       for (let k = 1; k < 3; k++) { const a = iso(cam, x + k / 3, y), b = iso(cam, x + k / 3, y + 1); g.beginPath(); g.moveTo(a.x + 0.5, a.y + 0.5); g.lineTo(b.x + 0.5, b.y + 0.5); g.stroke(); }
     }
   }
-  // sombra perto das paredes
-  g.globalAlpha = 0.12;
-  poly(g, [iso(cam, 0, 0), iso(cam, w, 0), iso(cam, w, 0.5), iso(cam, 0.5, 0.5), iso(cam, 0.5, h), iso(cam, 0, h)], '#000000');
+  // sombra perto das paredes (duas faixas, bem suave)
+  g.globalAlpha = 0.09;
+  poly(g, [iso(cam, 0, 0), iso(cam, w, 0), iso(cam, w, 0.7), iso(cam, 0.7, 0.7), iso(cam, 0.7, h), iso(cam, 0, h)], '#000000');
+  poly(g, [iso(cam, 0, 0), iso(cam, w, 0), iso(cam, w, 0.3), iso(cam, 0.3, 0.3), iso(cam, 0.3, h), iso(cam, 0, h)], '#000000');
   g.globalAlpha = 1;
+  // luz das janelas entrando no chão
+  for (const f of room.furni) {
+    if (f.type !== 'janela' && f.type !== 'cortina') continue;
+    const p0 = f.wpos ?? 0;
+    const pts = f.wall === 'L'
+      ? [iso(cam, 0, p0 + 0.1), iso(cam, 0, p0 + 0.9), iso(cam, Math.min(w, 3.6), p0 + 2.0), iso(cam, Math.min(w, 3.6), p0 + 0.9)]
+      : [iso(cam, p0 + 0.1, 0), iso(cam, p0 + 0.9, 0), iso(cam, p0 + 2.0, Math.min(h, 3.6)), iso(cam, p0 + 0.9, Math.min(h, 3.6))];
+    const lg = g.createLinearGradient(pts[0].x, pts[0].y, pts[2].x, pts[2].y);
+    lg.addColorStop(0, 'rgba(255,250,210,0.34)'); lg.addColorStop(1, 'rgba(255,250,210,0)');
+    poly(g, pts, lg);
+  }
 }
 
 export interface Ent { depth: number; draw: () => void }
@@ -89,6 +114,16 @@ export function drawScene(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom
   const flat = room.furni.filter((f) => FURNI_MAP[f.type]?.walk);
   flat.sort((a, b) => a.x + a.y - (b.x + b.y)).forEach((f) => { const d = FURNI_MAP[f.type]; const [W, D] = dims(f); d.draw(g, cam, { ...f, color: f.color ?? d.color }, W, D, t); });
   const ents: Ent[] = [];
+  // sombras suaves dos móveis no chão
+  g.fillStyle = 'rgba(20,10,40,0.16)';
+  for (const f of room.furni) {
+    const d = FURNI_MAP[f.type];
+    if (!d || d.walk || d.wall) continue;
+    const [W, D] = dims(f);
+    const o = 0.28;
+    const a = iso(cam, f.x + 0.12 + o, f.y + D - 0.05 + o), b2 = iso(cam, f.x + W - 0.05 + o, f.y + D - 0.05 + o), c2 = iso(cam, f.x + W - 0.05 + o, f.y + 0.12 + o), d0 = iso(cam, f.x + W - 0.1, f.y + 0.1), e0 = iso(cam, f.x + 0.1, f.y + D - 0.1);
+    g.beginPath(); g.moveTo(e0.x, e0.y); g.lineTo(a.x, a.y); g.lineTo(b2.x, b2.y); g.lineTo(c2.x, c2.y); g.lineTo(d0.x, d0.y); g.lineTo(iso(cam, f.x + W - 0.1, f.y + D - 0.1).x, iso(cam, f.x + W - 0.1, f.y + D - 0.1).y); g.closePath(); g.fill();
+  }
   for (const f of room.furni) {
     const d = FURNI_MAP[f.type];
     if (!d || d.walk || d.wall) continue;

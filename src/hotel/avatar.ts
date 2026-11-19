@@ -99,9 +99,12 @@ export function drawAvatar(g: CanvasRenderingContext2D, x: number, y: number, lo
     // bebida / sorvete na mão
     R(g, 7, -21, 4, 5, '#ffffff'); R(g, 7, -21, 4, 2, held === 'sorvete' ? '#ff8fc7' : '#8d5b3a', false);
   }
+  // sombreado lateral do corpo (volume)
+  g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(3, -27, 3, dress ? 16 : 11);
   // cabeça
   R(g, -2, -29, 4, 3, skin, false);
   E(g, 0, -37, 8, 8, skin);
+  g.fillStyle = 'rgba(0,0,0,0.08)'; g.beginPath(); g.ellipse(3, -35, 4.5, 6, 0, -1.2, 1.4); g.fill();
   // rosto (só de frente)
   if (front) {
     const blink = (t * 0.7) % 4 < 0.12;
