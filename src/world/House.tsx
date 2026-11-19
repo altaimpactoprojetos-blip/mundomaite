@@ -147,7 +147,7 @@ function Roof({ h, W, D }: { h: HouseConfig; W: number; D: number }) {
   const rh = h.style === 'chale' ? 3.6 : 2.6;
   return (
     <group position={[0, y, HOUSE_Z]}>
-      <mesh rotation={[0, Math.PI / 2, 0]} scale={[D / 2 + 0.6, rh, W / 2 + 0.6]} position={[0, rh / 2, 0]} material={mat(h.roofColor, { tex: 'tijolo', repeat: 3 })}>
+      <mesh rotation={[0, Math.PI / 2, 0]} scale={[D / 2 + 0.6, rh, W / 2 + 0.6]} position={[0, rh / 2, 0]} material={mat(h.roofColor, { tex: 'telha', repeat: 5 })} castShadow>
         <cylinderGeometry args={[0, 1, 1, 3, 1]} />
       </mesh>
       {h.style === 'praia' && <Bx c="#ffffff" p={[0, -0.1, D / 2 + 1.2]} s={[W, 0.15, 2.4]} />}
@@ -286,7 +286,7 @@ function HouseImpl({ def }: { def: PropertyDef }) {
   return (
     <group position={[x, 0, z]} rotation={[0, rot, 0]}>
       {/* lote */}
-      <Bx c={cfg ? '#a6e08f' : '#b8e6a0'} tex="grama" rep={6} p={[0, 0.02, 0]} s={[lw, 0.04, ld]} />
+      <Bx c={cfg ? '#6fcb50' : '#86d468'} tex="gramado" rep={8} p={[0, 0.02, 0]} s={[lw, 0.04, ld]} />
       <Bx c={def.id === MANSION_ID ? '#d8cfc0' : '#d9c7a8'} tex="tijolo" rep={3} p={[0, 0.05, (ld / 2 + HOUSE_Z + dims.D / 2) / 2]} s={[def.id === MANSION_ID ? 3.2 : 2.4, 0.06, ld / 2 - HOUSE_Z - dims.D / 2 + 0.5]} />
       {def.id === MANSION_ID && [-1, 1].map((sd) => [0.25, 0.5, 0.75].map((t) => <group key={`${sd}${t}`} position={[sd * 2.3, 0, HOUSE_Z + dims.D / 2 + (ld / 2 - HOUSE_Z - dims.D / 2) * t]}><Cy c="#4a4e57" p={[0, 0.5, 0]} s={[0.1, 1, 0.1]} low /><Sp c="#fff3a6" e={1} p={[0, 1.05, 0]} s={[0.25, 0.25, 0.25]} /></group>))}
       {/* placa / caixa de correio */}
@@ -311,7 +311,7 @@ function HouseImpl({ def }: { def: PropertyDef }) {
               {(['in', 'back', 'left', 'right', 'front'] as Side[]).map((side) => (
                 <group key={side} ref={(g) => { if (side !== 'in') sideRefs.current[`${f}-${side}`] = g; }}>
                   {segs.filter((s) => s.floor === f && (s.side ?? 'in') === side).map((s, i) => (
-                    <Bx key={i} c={s.kind === 'slab' ? cfg.floorColor : s.kind === 'part' ? '#fffaf3' : cfg.wallColor} tex={s.kind === 'slab' ? 'madeira' : undefined}
+                    <Bx key={i} c={s.kind === 'slab' ? cfg.floorColor : s.kind === 'part' ? '#fffaf3' : cfg.wallColor} tex={s.kind === 'slab' ? 'madeira' : s.kind === 'wall' ? (['casa', 'chale', 'praia'].includes(cfg.style) ? 'siding' : 'reboco') : undefined} rep={s.kind === 'wall' ? Math.max(1, Math.round(Math.max(s.w, s.d) / 3)) : 1}
                       p={[s.lx, s.ly + s.h / 2, s.lz]} s={[s.w, s.h, s.d]} />
                   ))}
                 </group>
@@ -351,7 +351,10 @@ function HouseImpl({ def }: { def: PropertyDef }) {
               <Bx c={cfg.wallColor} p={[0, 1.5, -3.4]} s={[6, 3, 0.2]} />
               <Bx c={cfg.wallColor} p={[3, 1.5, 0]} s={[0.2, 3, 7]} />
               <Bx c={cfg.roofColor} p={[0, 3.05, 0]} s={[6.4, 0.2, 7.2]} />
-              <Bx c="#9aa0a6" p={[0, 0.04, 2]} s={[5.6, 0.05, 11]} />
+              <Bx c="#b8b3aa" tex="calcada" rep={3} p={[0, 0.04, 2]} s={[5.6, 0.05, 11]} />
+              {/* portão de garagem entreaberto */}
+              <Bx c="#f4f1ec" tex="listras" rep={2} p={[0, 2.5, 3.4]} s={[5.6, 0.9, 0.12]} />
+              <Bx c={cfg.wallColor} p={[-2.9, 1.5, 3.4]} s={[0.25, 3, 0.25]} />
             </group>
           )}
           {cfg.pool && (

@@ -5,7 +5,7 @@ import { npcLook } from '../game/NPCs';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { BuildingDef } from '../types';
-import { Bx, Cy } from '../game/prims';
+import { Bx, Cy, Sp } from '../game/prims';
 import { setGroup, removeGroup, localBox } from '../systems/colliders';
 import { signTexture } from '../systems/textures';
 import { interiorFor } from '../data/interiors';
@@ -105,7 +105,7 @@ function BuildingImpl({ b }: { b: BuildingDef }) {
   });
   const sideRef = (i: number, n: [number, number]) => (g: THREE.Group | null) => { sides.current[i] = { g, n }; };
 
-  const wallM = mat(b.color);
+  const wallM = mat(b.color, { tex: 'reboco', repeat: Math.max(2, Math.round(w / 6)) });
   const inner = mat('#fffaf3');
   const side = (w - DOOR_W) / 2;
   return (
@@ -135,6 +135,16 @@ function BuildingImpl({ b }: { b: BuildingDef }) {
         {mid && <Windows w={w} d={d} h={h} color={b.trim} lit={night} />}
         {mid && !lowQ && <Facade w={w} d={d} h={h} trim={b.trim} roof={b.roof} lit={night} />}
       </group>
+      {/* calçada de ladrilhos na frente + floreiras */}
+      <Bx c="#e6e0d6" tex="calcada" rep={Math.round(w / 3)} p={[0, 0.03, d / 2 + 5]} s={[w + 4, 0.05, 10]} />
+      {mid && [-1, 1].map((sd) => (
+        <group key={sd} position={[sd * (DOOR_W / 2 + 2.2), 0, d / 2 + 2.2]}>
+          <Bx c="#c8603a" p={[0, 0.35, 0]} s={[1.2, 0.7, 1.2]} />
+          <Sp c="#2fae63" p={[0, 1.0, 0]} s={[1.3, 1, 1.3]} />
+          <Sp c={sd > 0 ? '#ff5fa2' : '#ffd23f'} p={[0.3, 1.35, 0.3]} s={[0.3, 0.3, 0.3]} />
+          <Sp c={sd > 0 ? '#ffd23f' : '#ff5fa2'} p={[-0.3, 1.3, -0.2]} s={[0.3, 0.3, 0.3]} />
+        </group>
+      ))}
       {/* pilares nas quinas, rodapé e cornija */}
       <group ref={(g) => { if (g) cornerRef.current = g; }}>
         {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => <Bx key={`${sx}${sz}`} c={b.trim} p={[sx * (w / 2), h / 2, sz * (d / 2)]} s={[0.7, h + 0.2, 0.7]} />)}

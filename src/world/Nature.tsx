@@ -136,9 +136,9 @@ export function Nature() {
   return (
     <group>
       <instancedMesh ref={trunkRef} args={[GEO.cylLow, mat('#9a6a45'), trees.length]} frustumCulled={false} />
-      <instancedMesh ref={crownRef} args={[GEO.sphereLow, mat('#ffffff'), round.length]} frustumCulled={false} />
+      <instancedMesh ref={crownRef} args={[GEO.sphereLow, mat('#ffffff'), round.length]} frustumCulled={false} castShadow />
       <instancedMesh ref={crown2Ref} args={[GEO.sphereLow, mat('#ffffff'), round.length]} frustumCulled={false} />
-      <instancedMesh ref={pineRef} args={[GEO.coneLow, mat('#2f9e5a'), pines.length * 3]} frustumCulled={false} />
+      <instancedMesh ref={pineRef} args={[GEO.coneLow, mat('#2f9e5a'), pines.length * 3]} frustumCulled={false} castShadow />
       <instancedMesh ref={shadowRef} args={[new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.2, depthWrite: false }), trees.length]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={palmRef} args={[new THREE.ConeGeometry(0.5, 1, 6), mat('#3ccf6e'), palms.length]} frustumCulled={false} />
     </group>

@@ -15,6 +15,7 @@ export const hs = {
   roomId: '',
   me: { x: 0, y: 0, path: [], dir: 0, anim: 'idle', emote: null, emoteUntil: 0, seat: null, arrive: null } as Walker,
   mounted: false,
+  night: new Date().getHours() >= 19 || new Date().getHours() < 6,
   held: null as string | null,
   pet: { x: 1, y: 1, dir: 0, moving: false, happyUntil: 0 },
   bots: [] as Bot[],

@@ -61,18 +61,19 @@ export function DayNight() {
     starsRef.current.position.copy(camera.position);
   });
 
-  const shadows = quality === 'alta';
+  const shadows = quality !== 'baixa';
   return (
     <>
       <hemisphereLight ref={hemi} args={['#cfe8ff', '#5f9e4a', 1]} />
       <directionalLight
         ref={sun}
         castShadow={shadows}
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-40}
-        shadow-camera-right={40}
-        shadow-camera-top={40}
-        shadow-camera-bottom={-40}
+        shadow-mapSize={quality === 'alta' ? [2048, 2048] : [1024, 1024]}
+        shadow-normalBias={0.04}
+        shadow-camera-left={-45}
+        shadow-camera-right={45}
+        shadow-camera-top={45}
+        shadow-camera-bottom={-45}
         shadow-camera-far={200}
         shadow-bias={-0.0005}
       />

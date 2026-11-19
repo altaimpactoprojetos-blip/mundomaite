@@ -1,5 +1,6 @@
 import { box, cyl, ball, iso, shade, poly, type Cam, TW, TH, WALL_H } from './iso';
 
+export const nightFlag = { on: false };
 export interface PFurni { uid: string; type: string; x: number; y: number; rot: 0 | 1; color?: string; on?: boolean; wall?: 'L' | 'R'; wpos?: number; t0?: number }
 export type FurniCat = 'presentes' | 'fazenda' | 'quarto' | 'sala' | 'cozinha' | 'banheiro' | 'jardim' | 'diversao' | 'especiais' | 'parede';
 export interface FurniDef {
@@ -641,10 +642,10 @@ export function drawWallItem(g: CanvasRenderingContext2D, cam: Cam, f: PFurni, t
   const c = f.color ?? FURNI_MAP[f.type].color;
   switch (f.type) {
     case 'quadro': quad(0.15, 0.85, 34, 58, '#ffd23f'); quad(0.22, 0.78, 37, 55, c, false); { const s = at(0.5, 47); g.fillStyle = '#ffe066'; g.beginPath(); g.arc(s.x, s.y, 3, 0, 7); g.fill(); } break;
-    case 'janela': quad(0.08, 0.92, 26, 62, '#ffffff'); quad(0.15, 0.85, 29, 59, c, false); quad(0.48, 0.52, 29, 59, '#ffffff', false); quad(0.15, 0.85, 43, 45, '#ffffff', false); break;
+    case 'janela': quad(0.08, 0.92, 26, 62, '#ffffff'); quad(0.15, 0.85, 29, 59, nightFlag.on ? '#1d2357' : c, false); if (nightFlag.on) { const s = at(0.3, 52); g.fillStyle = '#fff'; g.fillRect(s.x, s.y, 1, 1); const s3 = at(0.68, 38); g.fillRect(s3.x, s3.y, 1, 1); } quad(0.48, 0.52, 29, 59, '#ffffff', false); quad(0.15, 0.85, 43, 45, '#ffffff', false); break;
     case 'prateleira': quad(0.05, 0.95, 36, 39, c); for (let i = 0; i < 3; i++) quad(0.15 + i * 0.25, 0.3 + i * 0.25, 39, 46 + i * 2, ['#ff5f5f', '#5ab0ff', '#3ccf91'][i]); break;
     case 'relogio': { const s = at(0.5, 48); g.fillStyle = c; g.beginPath(); g.ellipse(s.x, s.y, 7, 8, 0, 0, 7); g.fill(); g.strokeStyle = shade(c, 0.5); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.ellipse(s.x, s.y, 5, 6, 0, 0, 7); g.fill(); g.strokeStyle = '#333'; g.beginPath(); g.moveTo(s.x, s.y); g.lineTo(s.x + Math.cos(t) * 4, s.y + Math.sin(t) * 4); g.stroke(); break; }
-    case 'cortina': quad(0.08, 0.92, 26, 62, '#ffffff'); quad(0.15, 0.85, 29, 59, '#bfe9ff', false); quad(0.02, 0.3, 24, 66, c); quad(0.7, 0.98, 24, 66, c); quad(0.0, 1.0, 64, 68, shade(c, 0.8)); break;
+    case 'cortina': quad(0.08, 0.92, 26, 62, '#ffffff'); quad(0.15, 0.85, 29, 59, nightFlag.on ? '#1d2357' : '#bfe9ff', false); quad(0.02, 0.3, 24, 66, c); quad(0.7, 0.98, 24, 66, c); quad(0.0, 1.0, 64, 68, shade(c, 0.8)); break;
     case 'espelho-parede': quad(0.2, 0.8, 22, 64, '#ffd23f'); quad(0.27, 0.73, 25, 61, c, false); quad(0.35, 0.45, 40, 58, '#ffffff', false); break;
     case 'luzinhas': for (let i = 0; i < 6; i++) { const s = at(0.08 + i * 0.17, 60 - Math.sin((i / 5) * Math.PI) * 6); g.fillStyle = ['#ff5f5f', '#ffd23f', '#5ab0ff', '#3ccf91', '#ff8fc7', '#c77dff'][(i + Math.floor(t * 3)) % 6]; g.fillRect(s.x - 1, s.y, 3, 3); } break;
     case 'tv-parede': quad(0.05, 0.95, 32, 58, '#2b2d42'); quad(0.1, 0.9, 34, 56, `hsl(${(t * 40) % 360},60%,60%)`, false); break;

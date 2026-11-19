@@ -95,6 +95,7 @@ export function CityDetails() {
       <Instanced items={patches} geo={circle} material={mat('#ffffff', { tex: 'grama', repeat: 2 })} />
       <Instanced items={flowers} geo={circle} material={mat('#ffffff', { emissive: 0.2 })} />
       <StreetSigns />
+      <StreetFurniture />
     </group>
   );
 }
@@ -128,3 +129,61 @@ function StreetSigns() {
   return <>{list.map((s, i) => <SignPost key={i} {...s} />)}</>;
 }
 
+
+/** Árvores e postes ao longo das calçadas (instanciados: leve para o celular) */
+function StreetFurniture() {
+  const { trees, lamps } = useMemo(() => {
+    const trees: [number, number, number][] = [];
+    const lamps: [number, number][] = [];
+    let k = 0;
+    for (const r of ROADS) {
+      const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1);
+      if (len < 60) continue;
+      const rot = Math.atan2(r.x2 - r.x1, r.z2 - r.z1);
+      const nx = Math.cos(rot), nz = -Math.sin(rot);
+      const ux = (r.x2 - r.x1) / len, uz = (r.z2 - r.z1) / len;
+      for (let d = 14; d < len - 10; d += 13) {
+        const cx = r.x1 + ux * d, cz = r.z1 + uz * d;
+        // pula os cruzamentos
+        if (XS.some((X) => Math.abs(cx - X) < 11 && Math.abs(uz) < 0.5) || ZS.some((Z) => Math.abs(cz - Z) < 11 && Math.abs(ux) < 0.5)) continue;
+        for (const sd of [-1, 1]) {
+          const off = r.w / 2 + 1.9;
+          const px = cx + nx * off * sd, pz = cz + nz * off * sd;
+          if (k++ % 2 === 0) trees.push([px, pz, 0.75 + ((k * 37) % 10) / 30]);
+          else lamps.push([px, pz]);
+        }
+      }
+    }
+    return { trees, lamps };
+  }, []);
+  const trunk = useRef<THREE.InstancedMesh>(null!);
+  const crown = useRef<THREE.InstancedMesh>(null!);
+  const pole = useRef<THREE.InstancedMesh>(null!);
+  const bulb = useRef<THREE.InstancedMesh>(null!);
+  useEffect(() => {
+    const o = new THREE.Object3D();
+    const col = new THREE.Color();
+    const tones = ['#3fbf6a', '#5ccf6e', '#2fae63', '#ffb3d9'];
+    trees.forEach(([x, z, s], i) => {
+      o.rotation.set(0, 0, 0);
+      o.position.set(x, 1.3 * s, z); o.scale.set(0.3 * s, 2.6 * s, 0.3 * s); o.updateMatrix(); trunk.current.setMatrixAt(i, o.matrix);
+      o.position.set(x, 3.4 * s, z); o.scale.set(2.8 * s, 2.5 * s, 2.8 * s); o.updateMatrix(); crown.current.setMatrixAt(i, o.matrix);
+      crown.current.setColorAt(i, col.set(tones[i % (i % 7 === 0 ? 4 : 3)]));
+    });
+    lamps.forEach(([x, z], i) => {
+      o.position.set(x, 2.3, z); o.scale.set(0.14, 4.6, 0.14); o.updateMatrix(); pole.current.setMatrixAt(i, o.matrix);
+      o.position.set(x, 4.75, z); o.scale.set(0.5, 0.35, 0.5); o.updateMatrix(); bulb.current.setMatrixAt(i, o.matrix);
+    });
+    [trunk, crown, pole, bulb].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; });
+  }, [trees, lamps]);
+  const cyl = useMemo(() => new THREE.CylinderGeometry(0.5, 0.5, 1, 8), []);
+  const sph = useMemo(() => new THREE.SphereGeometry(0.5, 10, 8), []);
+  return (
+    <group>
+      <instancedMesh ref={trunk} args={[cyl, mat('#8d5b3a'), trees.length]} frustumCulled={false} castShadow raycast={() => null} />
+      <instancedMesh ref={crown} args={[sph, mat('#ffffff'), trees.length]} frustumCulled={false} castShadow raycast={() => null} />
+      <instancedMesh ref={pole} args={[cyl, mat('#4a4e57'), lamps.length]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh ref={bulb} args={[sph, mat('#fff3a6', { emissive: 1 }), lamps.length]} frustumCulled={false} raycast={() => null} />
+    </group>
+  );
+}

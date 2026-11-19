@@ -1,6 +1,6 @@
 import { iso, poly, shade, tile, box, type Cam, TW, TH, WALL_H } from './iso';
 void TW;
-import { FURNI_MAP, dims, drawWallItem, type PFurni } from './furni';
+import { FURNI_MAP, dims, drawWallItem, nightFlag, type PFurni } from './furni';
 import type { HotelRoom } from './rooms';
 import { drawAvatar, drawPet } from './avatar';
 import { hs, floorItemAt } from './engine';
@@ -92,7 +92,7 @@ function drawFloor(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom) {
   g.globalAlpha = 1;
   // luz das janelas entrando no chão
   for (const f of room.furni) {
-    if (f.type !== 'janela' && f.type !== 'cortina') continue;
+    if ((f.type !== 'janela' && f.type !== 'cortina') || hs.night) continue;
     const p0 = f.wpos ?? 0;
     const pts = f.wall === 'L'
       ? [iso(cam, 0, p0 + 0.1), iso(cam, 0, p0 + 0.9), iso(cam, Math.min(w, 3.6), p0 + 2.0), iso(cam, Math.min(w, 3.6), p0 + 0.9)]
@@ -105,7 +105,26 @@ function drawFloor(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom) {
 
 export interface Ent { depth: number; draw: () => void }
 
+// contorno escuro em volta dos personagens (estilo pixel art clássico)
+const SP = 3;
+const spr = document.createElement('canvas'); spr.width = 80 * SP; spr.height = 96 * SP;
+const sil = document.createElement('canvas'); sil.width = 80 * SP; sil.height = 96 * SP;
+function outlined(g: CanvasRenderingContext2D, x: number, y: number, paint: (c: CanvasRenderingContext2D) => void) {
+  const c = spr.getContext('2d')!;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, spr.width, spr.height);
+  c.setTransform(SP, 0, 0, SP, 0, 0); c.imageSmoothingEnabled = false;
+  paint(c);
+  const s2 = sil.getContext('2d')!;
+  s2.setTransform(1, 0, 0, 1, 0, 0); s2.globalCompositeOperation = 'source-over'; s2.clearRect(0, 0, sil.width, sil.height);
+  s2.drawImage(spr, 0, 0);
+  s2.globalCompositeOperation = 'source-in'; s2.fillStyle = '#2b1a3a'; s2.fillRect(0, 0, sil.width, sil.height);
+  const dx = Math.round(x) - 40, dy = Math.round(y) - 80;
+  for (const [ox, oy] of [[-0.6, 0], [0.6, 0], [0, -0.6], [0, 0.6]]) g.drawImage(sil, dx + ox, dy + oy, 80, 96);
+  g.drawImage(spr, dx, dy, 80, 96);
+}
+
 export function drawScene(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom, look: Appearance, t: number, pet: null | { species: string; color: string }) {
+  nightFlag.on = hs.night;
   drawWalls(g, cam, room);
   for (const f of room.furni) if (FURNI_MAP[f.type]?.wall) drawWallItem(g, cam, f, t);
   drawFloor(g, cam, room);
@@ -143,15 +162,15 @@ export function drawScene(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom
     if (swim && anim === 'idle') anim = 'swim';
     const p = iso(cam, w.x + 0.5, w.y + 0.5, (mounted ? 14 : 0) + seatZ(w.seat));
     if (mounted) anim = 'ride';
-    drawAvatar(g, p.x, p.y + (swim ? 6 : 0), lk, w.dir, anim, t, held);
+    outlined(g, p.x, p.y + (swim ? 6 : 0), (c) => drawAvatar(c, 40, 80, lk, w.dir, anim, t, held));
   };
   ents.push({ depth: hs.me.x + hs.me.y + (hs.me.seat ? 1.2 : 0.6), draw: () => {
     if (hs.mounted && pet) { const p = iso(cam, hs.me.x + 0.5, hs.me.y + 0.5); drawPet(g, p.x, p.y, pet.species, pet.color, hs.me.dir, t, hs.me.path.length > 0); }
     avatar(hs.me, look, hs.held, hs.mounted);
   } });
   for (const b of hs.bots) ents.push({ depth: b.x + b.y + 0.6, draw: () => avatar(b, b.look, null) });
-  if (pet && !hs.mounted) ents.push({ depth: hs.pet.x + hs.pet.y + 0.55, draw: () => { const p = iso(cam, hs.pet.x + 0.5, hs.pet.y + 0.5); drawPet(g, p.x, p.y, pet.species, pet.color, hs.pet.dir, t, hs.pet.moving, t < hs.pet.happyUntil); } });
-  for (const rp of hs.roomPets) ents.push({ depth: rp.x + rp.y + 0.5, draw: () => { const p = iso(cam, rp.x + 0.5, rp.y + 0.5); drawPet(g, p.x, p.y, rp.species, rp.color, rp.dir, t, rp.moving, t < rp.happyUntil); } });
+  if (pet && !hs.mounted) ents.push({ depth: hs.pet.x + hs.pet.y + 0.55, draw: () => { const p = iso(cam, hs.pet.x + 0.5, hs.pet.y + 0.5); outlined(g, p.x, p.y, (c) => drawPet(c, 40, 80, pet.species, pet.color, hs.pet.dir, t, hs.pet.moving, t < hs.pet.happyUntil)); } });
+  for (const rp of hs.roomPets) ents.push({ depth: rp.x + rp.y + 0.5, draw: () => { const p = iso(cam, rp.x + 0.5, rp.y + 0.5); outlined(g, p.x, p.y, (c) => drawPet(c, 40, 80, rp.species, rp.color, rp.dir, t, rp.moving, t < rp.happyUntil)); } });
   ents.sort((a, b) => a.depth - b.depth).forEach((e) => e.draw());
   // fantasma ao colocar/mover
   if ((hs.mode === 'place' || hs.mode === 'move') && hs.ghost) {
@@ -176,6 +195,24 @@ export function drawScene(g: CanvasRenderingContext2D, cam: Cam, room: HotelRoom
     g.fillStyle = '#ff5fa2';
     g.fillRect(p.x - 2, p.y, 2, 2); g.fillRect(p.x + 1, p.y, 2, 2); g.fillRect(p.x - 1, p.y + 2, 3, 1); g.fillRect(p.x, p.y + 3, 1, 1);
     g.globalAlpha = 1;
+  }
+  // noite: escurece o quarto e acende as luzes
+  if (hs.night) {
+    g.fillStyle = 'rgba(14,16,60,0.5)';
+    const a = iso(cam, 0, 0, WALL_H + 6), b = iso(cam, room.w, 0, WALL_H + 6), c = iso(cam, room.w, room.h, -8), d = iso(cam, 0, room.h, WALL_H + 6), e = iso(cam, 0, room.h, -8), f2 = iso(cam, room.w, 0, -8);
+    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.lineTo(f2.x, f2.y); g.lineTo(c.x, c.y); g.lineTo(e.x, e.y); g.lineTo(d.x, d.y); g.closePath(); g.fill();
+    g.globalCompositeOperation = 'lighter';
+    for (const f of room.furni) {
+      const glow = (f.type === 'abajur' || f.type === 'luminaria' || f.type === 'tv' || f.type === 'videogame') ? (f.on ? 1 : 0) : f.type === 'poste' || f.type === 'neon' || f.type === 'lareira' || f.type === 'luzinhas' || f.type === 'pista-danca' ? 0.8 : 0;
+      if (!glow) continue;
+      const p = f.wall ? (f.wall === 'L' ? iso(cam, 0, (f.wpos ?? 0) + 0.5, 50) : iso(cam, (f.wpos ?? 0) + 0.5, 0, 50)) : iso(cam, f.x + 0.5, f.y + 0.5, f.type === 'pista-danca' ? 2 : 24);
+      const R = f.type === 'pista-danca' ? 16 : f.type === 'poste' ? 60 : 48;
+      const gr = g.createRadialGradient(p.x, p.y, 2, p.x, p.y, R);
+      const col = f.type === 'neon' ? '255,95,162' : f.type === 'tv' || f.type === 'videogame' ? '120,180,255' : f.type === 'lareira' ? '255,150,60' : '255,225,140';
+      gr.addColorStop(0, `rgba(${col},${0.42 * glow})`); gr.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = gr; g.fillRect(p.x - R, p.y - R, R * 2, R * 2);
+    }
+    g.globalCompositeOperation = 'source-over';
   }
   void box;
 }

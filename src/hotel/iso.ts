@@ -67,6 +67,17 @@ export function box(g: CanvasRenderingContext2D, cam: Cam, x: number, y: number,
     }
   }
   poly(g, top, color, st);
+  if (outline && w >= 0.6 && d >= 0.5 && h >= 2) {
+    // textura suave no tampo (veios / trama do tecido)
+    g.strokeStyle = shade(color, 0.9);
+    g.lineWidth = 0.5;
+    const n = Math.max(1, Math.round(d * 3));
+    for (let i = 1; i < n; i++) {
+      const a = p(x + 0.06, y + (d * i) / n, z + h), b = p(x + w - 0.06, y + (d * i) / n, z + h);
+      g.beginPath(); g.moveTo(a.x + 0.5, a.y + 0.5); g.lineTo(b.x + 0.5, b.y + 0.5); g.stroke();
+    }
+    g.lineWidth = 1;
+  }
   if (outline && h >= 4) {
     // brilho nas bordas da frente do topo
     g.strokeStyle = shade(color, 1.35);

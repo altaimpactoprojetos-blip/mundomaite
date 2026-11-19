@@ -15,19 +15,21 @@ import { Tour } from './Tour';
 import { useGame } from '../store/gameStore';
 import { rt } from '../systems/runtime';
 import { lodQuality } from './Avatar';
+import { SHADOWS } from './prims';
 
 export function Scene() {
   const quality = useGame((s) => s.settings.quality);
   const pixel = useGame((s) => s.settings.pixel);
   lodQuality.q = quality;
+  SHADOWS.on = quality !== 'baixa';
   const base: [number, number] = quality === 'baixa' ? [1, 1.25] : quality === 'media' ? [1, 1.5] : [1, 2];
   // modo pixel (estilo Habbo): desenha em resolução baixa e amplia com pixels nítidos
   const dpr: [number, number] = pixel ? [0.7, 0.7] : base;
   return (
     <Canvas
-      shadows={quality === 'alta'}
+      shadows={quality !== 'baixa'}
       dpr={dpr}
-      key={pixel ? 'px' : 'hd'}
+      key={(pixel ? 'px' : 'hd') + quality}
       gl={{ antialias: !pixel && quality !== 'baixa', powerPreference: 'high-performance', preserveDrawingBuffer: true }}
       camera={{ fov: 55, near: 0.2, far: 400, position: [80, 40, 60] }}
       onCreated={({ gl, scene }) => {

@@ -342,6 +342,7 @@ export function Hotel() {
           <div className="h-top">
             <div className="h-chip">{room.icon ?? '🏠'} {room.name}</div>
             <div style={{ flex: 1 }} />
+            <button className="h-btn" onClick={() => { hs.night = !hs.night; force((n) => n + 1); sfx('click'); }}>{hs.night ? '🌙' : '☀️'}</button>
             <button className="h-btn" onClick={() => { hs.zoom = Math.min(4, hs.zoom + 0.5); }}>🔍+</button>
             <button className="h-btn" onClick={() => { hs.zoom = Math.max(-2, hs.zoom - 0.5); }}>🔍−</button>
             <button className="h-btn" onClick={() => useGame.getState().openPanel('settings')}>⚙️</button>
