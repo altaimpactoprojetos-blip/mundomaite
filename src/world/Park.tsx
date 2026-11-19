@@ -165,7 +165,7 @@ export function AmusementPark() {
           <FerrisWheel x={320} z={-25} />
           <Carousel x={225} z={-18} />
           <Coaster x={300} z={25} />
-          <mesh position={[145, 8.5, -5]} rotation={[0, Math.PI / 2, 0]}><planeGeometry args={[10, 2.5]} /><meshBasicMaterial map={sign} transparent side={THREE.DoubleSide} /></mesh>
+          {[Math.PI / 2, -Math.PI / 2].map((r) => <mesh key={r} position={[145, 8.5, -5]} rotation={[0, r, 0]}><planeGeometry args={[10, 2.5]} /><meshBasicMaterial map={sign} transparent /></mesh>)}
         </group>
       )}
     </>

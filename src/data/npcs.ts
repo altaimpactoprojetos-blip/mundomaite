@@ -1,5 +1,12 @@
 import type { NPCDef, NPCRoutineStep } from '../types';
-import { BUILDINGS } from './world';
+import { BUILDINGS, PROPERTIES } from './world';
+
+export const MANSION = PROPERTIES.find((p) => p.preset?.name === 'Mansão das Estrelas')!;
+/** Ponto em coordenadas locais do lote (frente = rua) */
+export function lotPoint(lx: number, lz: number): [number, number] {
+  const c = Math.cos(MANSION.rot), s = Math.sin(MANSION.rot);
+  return [MANSION.pos[0] + lx * c + lz * s, MANSION.pos[1] - lx * s + lz * c];
+}
 
 /** Converte coordenadas locais de um prédio (frente = +z) para o mundo. */
 export function inside(id: string, lx: number, lz: number): [number, number] {
@@ -20,6 +27,9 @@ const home = (x: number, z: number): NPCRoutineStep => ({ from: 21, to: 7, at: [
 const PRACA: [number, number] = [65, -5];
 
 export const NPCS: NPCDef[] = [
+  { id: 'vizinha-lu', name: 'Vizinha Lu', role: 'Vizinha da Mansão', icon: '👩', personality: 'carinhosa', look: { hairStyle: 'rabo', hairColor: '#d9a35b', top: 'blusa-babado', topColor: '#5ad1ff', bottom: 'saia', bottomColor: '#ffffff', height: 1.12 },
+    routine: [{ from: 6, to: 21, at: lotPoint(6, 17.5), activity: 'work', radius: 1 }, home(-185, -82)],
+    lines: ['Bom dia, vizinha! Que roupa linda! 🌸', 'O Purpurina está brilhando hoje! Posso fazer carinho nele? 🦄', 'Dizem que o chocolate quente da cafeteria é o melhor da cidade! ☕', 'Vamos brincar na praça mais tarde?'] },
   // ---- Centro ----
   { id: 'lia', name: 'Lia', role: 'Vendedora do Shopping', icon: '🛍️', personality: 'engracada', look: { hairStyle: 'rabo', hairColor: '#c0392b', top: 'blusa-babado', topColor: '#ff8fc7' }, shop: 'roupas',
     routine: [work('shopping', -20, -8, 8, 19), at(...PRACA, 19, 21, 'walk', 15), home(-200, -40)],

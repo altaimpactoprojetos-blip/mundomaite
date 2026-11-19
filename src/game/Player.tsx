@@ -36,7 +36,7 @@ export function Player() {
     rt.time += dt;
     if (rt.time - lastInteractCheck > 0.1) {
       lastInteractCheck = rt.time;
-      const it = inVehicle ? null : findNearest(P.pos);
+      const it = inVehicle ? null : findNearest(P.pos, P.yaw);
       ui.prompt = it ? { label: it.label, icon: it.icon } : null;
       (window as unknown as { __nearest: unknown }).__nearest = it;
     }
@@ -72,6 +72,7 @@ export function Player() {
       }
     }
     const moving = stick || !!auto;
+    P.moving = moving;
 
     // sentado / dormindo / brinquedo
     if (P.seat) {
@@ -99,7 +100,7 @@ export function Player() {
     }
 
     if (!blockedUI && consume('e')) {
-      const it = findNearest(P.pos);
+      const it = findNearest(P.pos, P.yaw);
       if (it) it.action();
     }
 
@@ -120,7 +121,7 @@ export function Player() {
       let diff = targetYaw - P.yaw;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      P.yaw += diff * Math.min(1, dt * 12);
+      P.yaw += diff * Math.min(1, dt * 9);
     }
 
     // colisão horizontal
@@ -178,7 +179,7 @@ export function Player() {
     P.anim = anim;
 
     group.current.position.copy(P.pos);
-    if (mounted) group.current.position.y += 1.1;
+    if (mounted) group.current.position.y += 1.72;
     group.current.rotation.y = P.yaw;
 
     // zona atual / descobertas
@@ -197,7 +198,7 @@ export function Player() {
   return (
     <>
       <group ref={group}>
-        <Avatar look={look} getAnim={() => rt.player.anim} held={held} />
+        <Avatar look={look} getAnim={() => rt.player.anim} held={held} getLook={playerLook} />
         <BlobShadow />
       </group>
       <WalkMarker />
@@ -230,4 +231,22 @@ const blobMat = new THREE.MeshBasicMaterial({ color: '#000000', transparent: tru
 const blobGeo = new THREE.CircleGeometry(0.42, 16);
 export function BlobShadow({ size = 1 }: { size?: number }) {
   return <mesh geometry={blobGeo} material={blobMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} scale={size} raycast={() => null} />;
+}
+
+const lookTmp = new THREE.Vector3();
+/** Para onde a Maitê olha: quem está falando com ela ou o morador mais perto. */
+function playerLook(): THREE.Vector3 | null {
+  const d = useGame.getState().dialog;
+  const P = rt.player.pos;
+  if (d) {
+    const np = rt.npcPos.get(d.npcId);
+    if (np) return lookTmp.set(np.x, np.y + 1.5, np.z);
+  }
+  let best: THREE.Vector3 | null = null;
+  let bd = 5;
+  for (const v of rt.npcPos.values()) {
+    const dd = Math.hypot(v.x - P.x, v.z - P.z);
+    if (dd < bd && dd > 0.5) { bd = dd; best = v; }
+  }
+  return best ? lookTmp.set(best.x, best.y + 1.5, best.z) : null;
 }

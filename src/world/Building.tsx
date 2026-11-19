@@ -1,4 +1,7 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { useGame } from '../store/gameStore';
+import { LodAvatar } from '../game/Avatar';
+import { npcLook } from '../game/NPCs';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { BuildingDef } from '../types';
@@ -7,7 +10,7 @@ import { setGroup, removeGroup, localBox } from '../systems/colliders';
 import { signTexture } from '../systems/textures';
 import { interiorFor } from '../data/interiors';
 import { FixtureMeshes, useFixtureLogic } from './Fixtures';
-import { useNear } from '../game/hooks';
+import { useNear, useNight } from '../game/hooks';
 import { rt } from '../systems/runtime';
 import { mat } from '../systems/materials';
 
@@ -30,8 +33,8 @@ export function shellBoxes(x: number, y: number, z: number, rot: number, w: numb
   ];
 }
 
-function Windows({ w, d, h, color }: { w: number; d: number; h: number; color: string }) {
-  const glass = mat('#bfe6ff', { emissive: 0.15, rough: 0.2 });
+function Windows({ w, d, h, color, lit }: { w: number; d: number; h: number; color: string; lit: boolean }) {
+  const glass = lit ? mat('#ffe39a', { emissive: 1.1 }) : mat('#9fd4f5', { emissive: 0.12, rough: 0.15, metal: 0.3 });
   const frame = mat(color);
   const list: [number, number, number, number][] = [];
   const nx = Math.max(1, Math.floor((w - 6) / 6));
@@ -67,6 +70,7 @@ function BuildingImpl({ b }: { b: BuildingDef }) {
   const roof = useRef<THREE.Group>(null!);
   const near = useNear(x, z, Math.max(w, d) / 2 + 28);
   const mid = useNear(x, z, Math.max(w, d) / 2 + 90);
+  const night = useNight();
   const fixtures = useMemo(() => interiorFor(b.type, w, d), [b.type, w, d]);
   const sign = useMemo(() => signTexture(b.name, '#ffffff', '#e83e8c', b.icon), [b.name, b.icon]);
 
@@ -126,7 +130,10 @@ function BuildingImpl({ b }: { b: BuildingDef }) {
         <meshBasicMaterial map={sign} transparent />
       </mesh>
       </group>
-      <group ref={extRef}>{mid && <Windows w={w} d={d} h={h} color={b.trim} />}</group>
+      <group ref={extRef}>
+        {mid && <Windows w={w} d={d} h={h} color={b.trim} lit={night} />}
+        {mid && <Facade w={w} d={d} h={h} trim={b.trim} roof={b.roof} lit={night} />}
+      </group>
       {/* pilares nas quinas, rodapé e cornija */}
       <group ref={(g) => { if (g) cornerRef.current = g; }}>
         {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => <Bx key={`${sx}${sz}`} c={b.trim} p={[sx * (w / 2), h / 2, sz * (d / 2)]} s={[0.7, h + 0.2, 0.7]} />)}
@@ -145,6 +152,7 @@ function BuildingImpl({ b }: { b: BuildingDef }) {
           <Bx m={inner} c="" p={[0, h / 2, -d / 2 + T + 0.01]} s={[w - 2 * T, h - 0.2, 0.02]} />
           <FixtureMeshes fixtures={fixtures} />
           {b.type === 'cinema' && <CinemaScreen w={w} d={d} h={h} />}
+          {b.type === 'escola' && <SchoolLife d={d} />}
           <pointLight position={[0, h - 1, 0]} intensity={12} distance={Math.max(w, d)} color="#fff3e0" />
         </group>
       )}
@@ -167,3 +175,63 @@ function CinemaScreen({ w, d, h }: { w: number; d: number; h: number }) {
 }
 
 export const Building = memo(BuildingImpl);
+
+const STUDENTS = ['Pedro', 'Ana', 'Léo', 'Bia', 'Caio', 'Duda'];
+function SchoolLife({ d }: { d: number }) {
+  const board = useGame((s) => s.schoolBoard);
+  const tex = useMemo(() => {
+    if (!board) return null;
+    const t = new THREE.TextureLoader().load(board);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, [board]);
+  const [cls, setCls] = useState(false);
+  useFrame(() => { const c = rt.hour >= 7 && rt.hour < 16; if (c !== cls) setCls(c); });
+  const kids = useMemo(() => STUDENTS.map((n, i) => npcLook({ id: `aluno-${i}`, name: n, role: '', icon: '', personality: 'curiosa', look: { height: 0.8 }, routine: [], lines: [] })), []);
+  const bz = -d / 2 + 1.2;
+  const seats: [number, number][] = [[-9, -2.2], [-4.5, -2.2], [4.5, -2.2], [9, -2.2], [-4.5, 0.8], [4.5, 0.8]];
+  return (
+    <group>
+      {/* lousa: mostra o que a Maitê escreveu */}
+      <mesh position={[0, 2.56, bz - 0.5 + 0.075]}>
+        <planeGeometry args={[5.3, 1.45]} />
+        {tex ? <meshBasicMaterial map={tex} /> : <meshStandardMaterial color="#1f5f43" />}
+      </mesh>
+      {cls && seats.map(([x, z], i) => (
+        <group key={i} position={[x, 0.15, z]} rotation={[0, Math.PI, 0]}>
+          <LodAvatar look={kids[i]} anim="sit" seed={i} getLook={() => rt.player.pos.clone().setY(rt.player.pos.y + 1.3)} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** Vitrines no térreo e varandas no andar de cima */
+function Facade({ w, d, h, trim, roof, lit }: { w: number; d: number; h: number; trim: string; roof: string; lit: boolean }) {
+  const glass = lit ? mat('#ffe9b0', { emissive: 0.9 }) : mat('#cfeeff', { emissive: 0.25, rough: 0.05, metal: 0.4, opacity: 0.85 });
+  const z = d / 2 + 0.06;
+  const xs = [-(DOOR_W / 2 + 3.4), DOOR_W / 2 + 3.4].filter((x) => Math.abs(x) + 2.4 < w / 2 - 0.6);
+  const balcony = h >= 6.5;
+  return (
+    <group>
+      {xs.map((x) => (
+        <group key={x} position={[x, 0, z]}>
+          <Bx c={trim} p={[0, 1.6, 0]} s={[4.6, 2.9, 0.1]} />
+          <Bx m={glass} c="" p={[0, 1.6, 0.06]} s={[4.2, 2.5, 0.04]} />
+          <Bx c={trim} p={[0, 1.6, 0.09]} s={[0.08, 2.5, 0.03]} />
+          <Bx c={roof} tex="listras" p={[0, 3.25, 0.6]} s={[4.8, 0.1, 1.3]} r={[0.25, 0, 0]} />
+          {/* produtos na vitrine */}
+          {[-1.3, 0, 1.3].map((px, i) => <Bx key={px} c={['#ff8fc7', '#ffd23f', '#5ab0ff'][i]} p={[px, 0.75, 0.15]} s={[0.6, 0.5 + i * 0.15, 0.2]} />)}
+        </group>
+      ))}
+      {balcony && [-w / 4, w / 4].map((x) => (
+        <group key={x} position={[x, 3.7, z]}>
+          <Bx c="#ffffff" p={[0, 0, 0.7]} s={[3.2, 0.18, 1.4]} />
+          <Bx c={trim} p={[0, 0.55, 1.38]} s={[3.2, 0.08, 0.06]} />
+          {[-1.5, -0.75, 0, 0.75, 1.5].map((bx) => <Bx key={bx} c={trim} p={[bx, 0.28, 1.38]} s={[0.06, 0.55, 0.06]} />)}
+          <Bx c="#3ccf91" p={[1.1, 0.25, 0.9]} s={[0.4, 0.35, 0.3]} />
+        </group>
+      ))}
+    </group>
+  );
+}

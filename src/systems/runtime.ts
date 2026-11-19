@@ -16,13 +16,14 @@ export const rt = {
     rideExit: null as null | THREE.Vector3,
     mounted: null as null | string, // pet montado
     speedBoost: 1,
+    moving: false,
     lastJump: 0,
     walkTo: null as null | THREE.Vector3,
     walkPath: [] as THREE.Vector3[],
     walkAction: null as null | (() => void),
     walkStuck: 0,
   },
-  cam: { yaw: 0, pitch: 0.38, dist: 10, target: new THREE.Vector3(), shake: 0 },
+  cam: { yaw: 0, pitch: 0.3, dist: 6.5, editorYaw: 0, target: new THREE.Vector3(), shake: 0 },
   vehicle: {
     id: null as string | null,
     pos: new THREE.Vector3(),
@@ -31,6 +32,7 @@ export const rt = {
     alt: 0,
     pitch: 0,
     roll: 0,
+    steer: 0,
   },
   time: 0,
   hour: 9,
@@ -43,6 +45,8 @@ export const rt = {
   buildPointer: new THREE.Vector3(),
   buildHover: false,
   dragging: false,
+  petPos: new THREE.Vector3(0, -100, 0),
+  editorFocus: 'corpo' as 'corpo' | 'rosto',
   walkMarker: new THREE.Vector3(0, -100, 0),
   walkMarkerT: -10,
 };

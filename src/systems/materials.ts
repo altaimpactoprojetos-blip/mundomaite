@@ -5,8 +5,8 @@ import { getTexture } from './textures';
 // Cache de materiais para economizar memória e chamadas de desenho (bom para celular).
 const cache = new Map<string, THREE.Material>();
 
-export function mat(color: string, opts: { tex?: TextureKind; emissive?: number; opacity?: number; rough?: number; metal?: number; repeat?: number } = {}) {
-  const key = `${color}|${opts.tex ?? ''}|${opts.emissive ?? 0}|${opts.opacity ?? 1}|${opts.rough ?? 0.8}|${opts.metal ?? 0}|${opts.repeat ?? 1}`;
+export function mat(color: string, opts: { tex?: TextureKind; emissive?: number; opacity?: number; rough?: number; metal?: number; repeat?: number; ds?: boolean } = {}) {
+  const key = `${color}|${opts.tex ?? ''}|${opts.emissive ?? 0}|${opts.opacity ?? 1}|${opts.rough ?? 0.8}|${opts.metal ?? 0}|${opts.repeat ?? 1}|${opts.ds ? 1 : 0}`;
   let m = cache.get(key);
   if (!m) {
     const tex = opts.tex ? getTexture(opts.tex) : null;
@@ -25,6 +25,7 @@ export function mat(color: string, opts: { tex?: TextureKind; emissive?: number;
       emissiveIntensity: opts.emissive ?? 0,
       transparent: (opts.opacity ?? 1) < 1,
       opacity: opts.opacity ?? 1,
+      side: opts.ds ? THREE.DoubleSide : THREE.FrontSide,
     });
     cache.set(key, m);
   }

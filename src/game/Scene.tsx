@@ -5,11 +5,13 @@ import { World } from '../world/World';
 import { Player } from './Player';
 import { CameraRig } from './CameraRig';
 import { NPCs } from './NPCs';
+import { Pedestrians } from './Pedestrians';
 import { Pets } from './Pets';
 import { Vehicles } from './Vehicles';
 import { Effects } from './Effects';
 import { PlacedObjects, BuildController } from './BuildSystem';
 import { Tasks } from './Tasks';
+import { Tour } from './Tour';
 import { useGame } from '../store/gameStore';
 import { rt } from '../systems/runtime';
 
@@ -38,11 +40,13 @@ export function Scene() {
         <World />
         <Player />
         <NPCs />
+        <Pedestrians />
         <Pets />
         <Vehicles />
         <PlacedObjects />
         <BuildController />
         <Tasks />
+        <Tour />
         <Effects />
         <CameraRig />
       </Suspense>

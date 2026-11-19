@@ -31,7 +31,7 @@ export interface Appearance {
 
 export type AnimName =
   | 'idle' | 'walk' | 'run' | 'jump' | 'swim' | 'dance' | 'wave' | 'hug' | 'sit' | 'drive'
-  | 'sleep' | 'play' | 'cheer' | 'work' | 'exercise' | 'ride' | 'sing' | 'paint' | 'photo';
+  | 'sleep' | 'play' | 'cheer' | 'pet' | 'work' | 'exercise' | 'ride' | 'sing' | 'paint' | 'photo';
 
 export type ItemCategory =
   | 'roupas' | 'vestidos' | 'calcados' | 'bolsas' | 'acessorios' | 'brinquedos'
@@ -157,7 +157,9 @@ export type ActionSpec =
   | { type: 'farm'; plot: string }
   | { type: 'dance' }
   | { type: 'garage' }
-  | { type: 'mailbox' };
+  | { type: 'mailbox' }
+  | { type: 'prepare'; recipe: string }
+  | { type: 'board' };
 
 export interface Fixture {
   model: string;
@@ -234,7 +236,7 @@ export interface Quest {
 }
 
 export interface WorldTask {
-  kind: 'fires' | 'lost' | 'farm' | 'deliver';
+  kind: 'fires' | 'lost' | 'farm' | 'deliver' | 'cafe';
   title: string;
   targets: { id: string; pos: Vec3; done: boolean; icon: string; name: string }[];
   reward: number;

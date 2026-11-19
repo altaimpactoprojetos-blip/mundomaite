@@ -2,6 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './ui/styles.css';
+import { useGame } from './store/gameStore';
+import { rt } from './systems/runtime';
+
+// acesso para testes automáticos
+(window as unknown as { __mm: unknown }).__mm = { useGame, rt };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

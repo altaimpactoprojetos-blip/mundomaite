@@ -28,7 +28,7 @@ export function useFixtureLogic(key: string, fixtures: Fixture[], ox: number, oy
       const def = getModel(f.model);
       const sz = Math.max(def.size[0] * (f.scale?.[0] ?? 1), def.size[2] * (f.scale?.[2] ?? 1));
       offs.push(registerInteractable({
-        id: `${key}-${i}`, label: f.label && action.type !== 'shop' ? f.label : label, icon, radius: sz / 2 + 1.6, pos: () => p,
+        id: `${key}-${i}`, label: f.label && action.type !== 'shop' ? f.label : label, icon, radius: sz / 2 + 1.6, pos: () => p, priority: f.action ? 1.4 : 0.3,
         action: () => runAction(action, p, yaw, def.size[1] > 1.5 ? 0.45 : Math.min(def.size[1] * 0.55, 0.55)),
       }));
     });

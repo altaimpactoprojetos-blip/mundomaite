@@ -7,6 +7,7 @@ import { sfx } from '../systems/audio';
 import { takePhoto } from './photo';
 import type { Personality } from '../types';
 import { BUILDINGS } from '../data/world';
+import { petFx } from '../game/Pets';
 
 const GREET: Record<Personality, string[]> = {
   aventureira: ['Ei, {n}! Pronta para uma aventura?', 'Oi, {n}! Hoje eu explorei um lugar incrível!'],
@@ -36,8 +37,10 @@ export function Dialogue() {
 
   useEffect(() => {
     if (!npc) return;
-    setText(pick(GREET[npc.personality]).replace('{n}', name));
+    setText(npc.id === 'vizinha-lu' ? `Oi, ${name}! Bom dia! Que lindo ver você e o Purpurina saindo para passear! 🌸🦄` : pick(GREET[npc.personality]).replace('{n}', name));
     sfx('pop');
+    if (npc.id === 'vizinha-lu') useGame.getState().tourEvent('vizinho');
+    rt.npcAnim.set(npc.id, { anim: 'wave', until: rt.time + 1.8, follow: 0 });
   }, [npc, name]);
   if (!dialog || !npc) return null;
   const s = useGame.getState();
@@ -75,6 +78,14 @@ export function Dialogue() {
   ];
   if (npc.job) options.push({ icon: PROF_MAP[npc.job]?.icon ?? '💼', label: 'Trabalhar', go: () => s.set({ dialog: null, minigame: npc.job! }) });
   if (npc.shop) options.push({ icon: '🛍️', label: 'Comprar', go: () => { s.set({ dialog: null }); s.openPanel('shop', npc.shop!); } });
+  const myPet = s.pets.find((p) => p.id === s.activePet);
+  if (myPet) options.push({ icon: '🦄', label: `Carinho no ${myPet.name}`, go: () => {
+    petFx.happyUntil = rt.time + 3; petFx.nuzzleUntil = rt.time + 2;
+    npcAnim('pet', 2.5);
+    if (npcPos) spawnEffect('hearts', npcPos);
+    setText(`Que fofinho! O ${myPet.name} é muito carinhoso! 💕`);
+    s.befriend(npc.id, 2); s.petCare(myPet.id, 'pet');
+  } });
   options.push({ icon: '👋', label: 'Tchau!', go: () => { npcAnim('wave', 2); close(); } });
 
   return (

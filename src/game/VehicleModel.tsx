@@ -29,7 +29,19 @@ function Prop({ p, size = 1.4, axis = 'z', speed }: { p: [number, number, number
 
 interface Props { vtype: VehicleType; color: string; color2?: string; speedRef?: React.MutableRefObject<number>; lights?: boolean }
 
-function Model({ vtype, color, color2 = '#ffffff', speedRef }: Props) {
+const vShadowMat = new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.25, depthWrite: false });
+const vShadowGeo = new THREE.CircleGeometry(0.5, 20);
+const SHADOW: Partial<Record<VehicleType, [number, number]>> = { moto: [1, 2.4], bicicleta: [0.8, 2], patinete: [0.6, 1.2], onibus: [3.2, 10], 'caminhao-bombeiro': [3, 8], aviao: [7, 7], jatinho: [6, 8], helicoptero: [3, 6], barco: [0, 0], lancha: [0, 0], jetski: [0, 0], trator: [2.4, 3.6], carrinho: [1.9, 3] };
+function Model(props: Props) {
+  const sh = SHADOW[props.vtype] ?? [2.4, 4.6];
+  return (
+    <>
+      {sh[0] > 0 && <mesh geometry={vShadowGeo} material={vShadowMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} scale={[sh[0], sh[1], 1]} raycast={() => null} />}
+      <ModelBody {...props} />
+    </>
+  );
+}
+function ModelBody({ vtype, color, color2 = '#ffffff', speedRef }: Props) {
   const local = useRef(0);
   const spin = useRef(0);
   const sp = speedRef ?? local;

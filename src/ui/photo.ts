@@ -25,6 +25,7 @@ export function takePhoto() {
       const url = off.toDataURL('image/jpeg', 0.75);
       const s = useGame.getState();
       s.addPhoto(url, (window as unknown as { __zone?: string }).__zone ?? '');
+      (window as unknown as { __zone?: string }).__zone = undefined;
       s.toast('Foto guardada no álbum! 📸', '📸');
     } catch {
       useGame.getState().toast('Não deu para tirar a foto agora', '📷');

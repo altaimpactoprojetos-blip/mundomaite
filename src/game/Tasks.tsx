@@ -8,8 +8,27 @@ import { emote, rt, spawnEffect } from '../systems/runtime';
 import { emojiTexture } from '../systems/textures';
 import { mat } from '../systems/materials';
 import { sfx } from '../systems/audio';
+import { inside } from '../data/npcs';
+import { Avatar } from './Avatar';
+import { npcLook, npcLookAtPlayer } from './NPCs';
+import { BlobShadow } from './Player';
+
+const CAFE_SEATS: [number, number][] = [[-7, 3], [-1, 3], [5, 3]];
+const DR: [string, string][] = [['cafe', '☕'], ['chocolate', '🍫'], ['morango', '🍓'], ['shake', '🥤']];
+export function makeCafeTask(n = 3): WorldTask {
+  const seats = [...CAFE_SEATS].sort(() => Math.random() - 0.5).slice(0, n);
+  return {
+    kind: 'cafe', title: 'Servir os clientes da cafeteria', reward: 60 + n * 30,
+    targets: seats.map(([lx, lz], i) => {
+      const [x, z] = inside('cafeteria', lx, lz);
+      const d = DR[Math.floor(Math.random() * DR.length)];
+      return { id: `c${i}`, pos: [x, 0.1, z] as [number, number, number], done: false, icon: d[1], name: d[0] };
+    }),
+  };
+}
 
 export function makeTask(kind: WorldTask['kind']): WorldTask {
+  if (kind === 'cafe') return makeCafeTask(3);
   const r = (a: number, b: number) => a + Math.random() * (b - a);
   if (kind === 'fires') {
     const spots: [number, number][] = [[-60, 48], [20, -58], [110, 48], [-128, -20], [60, 100], [-20, 160], [128, -100], [0, -150], [-90, 50], [80, -60]];
@@ -68,6 +87,22 @@ export function Tasks() {
     if (!task) return;
     const offs = task.targets.filter((t) => !t.done).map((t) => {
       const p = new THREE.Vector3(...t.pos);
+      if (task.kind === 'cafe') {
+        return registerInteractable({
+          id: `task-${t.id}`, label: `Servir o cliente (pediu ${t.icon})`, icon: t.icon, radius: 2.6, priority: 2, pos: () => p,
+          action: () => {
+            const s = useGame.getState();
+            const held = s.held ?? '';
+            if (!held.startsWith('bebida:')) { s.toast(`O cliente pediu ${t.icon}. Prepare no balcão primeiro! ☕`, '🧾'); return; }
+            if (held !== `bebida:${t.name}`) { s.toast(`Ops! Ele pediu ${t.icon}. Vamos preparar de novo? 💕`, '🙈'); sfx('error'); return; }
+            s.hold(null);
+            spawnEffect('hearts', p); emote('cheer', 1.2); sfx('coin');
+            s.toast('Cliente: "Hmm, que delícia! Obrigado!" 💖', t.icon);
+            s.tourEvent('servir');
+            s.completeTarget(t.id);
+          },
+        });
+      }
       const label = task.kind === 'fires' ? 'Apagar o fogo!' : task.kind === 'lost' ? `Pegar: ${t.name}` : 'Encher o cocho de comida';
       return registerInteractable({
         id: `task-${t.id}`, label, icon: task.kind === 'fires' ? '🧯' : t.icon, radius: 3.5, priority: 2, pos: () => p,
@@ -85,7 +120,7 @@ export function Tasks() {
     <>
       {task.targets.filter((t) => !t.done).map((t) => (
         <group key={t.id}>
-          {task.kind === 'fires' ? <Fire pos={t.pos} /> : task.kind === 'lost' ? <Lost pos={t.pos} icon={t.icon} /> : (
+          {task.kind === 'cafe' ? <Customer pos={t.pos} icon={t.icon} seed={t.id} /> : task.kind === 'fires' ? <Fire pos={t.pos} /> : task.kind === 'lost' ? <Lost pos={t.pos} icon={t.icon} /> : (
             <group position={t.pos}>
               <mesh position={[0, 0.4, 0]} material={mat('#8d5b3a')}><boxGeometry args={[2, 0.8, 1]} /></mesh>
               <Lost pos={[0, 0.2, 0]} icon="🌾" />
@@ -99,3 +134,19 @@ export function Tasks() {
 }
 
 export { rt };
+
+const CUSTOMER_NAMES = ['Bia', 'Joca', 'Malu', 'Theo', 'Nina', 'Rafa'];
+function Customer({ pos, icon, seed }: { pos: [number, number, number]; icon: string; seed: string }) {
+  const look = useMemo(() => npcLook({ id: `cliente-${seed}-${Math.floor(rt.time)}`, name: CUSTOMER_NAMES[seed.charCodeAt(1) % 6], role: '', icon: '', personality: 'tranquila', look: {}, routine: [], lines: [] }), [seed]);
+  const tex = useMemo(() => emojiTexture(icon), [icon]);
+  const p = useMemo(() => new THREE.Vector3(...pos), [pos]);
+  const s = useRef<THREE.Sprite>(null!);
+  useFrame(({ clock }) => { s.current.position.y = 2.2 + Math.sin(clock.elapsedTime * 3) * 0.08; });
+  return (
+    <group position={[pos[0], pos[1] + 0.12, pos[2]]} rotation={[0, Math.PI * 1.5, 0]}>
+      <Avatar look={look} anim="sit" getLook={npcLookAtPlayer(p)} />
+      <BlobShadow />
+      <sprite ref={s} position={[0, 2.2, 0]} scale={[0.8, 0.8, 0.8]}><spriteMaterial map={tex} transparent depthTest={false} /></sprite>
+    </group>
+  );
+}

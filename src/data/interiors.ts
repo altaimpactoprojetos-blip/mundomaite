@@ -16,7 +16,7 @@ export function interiorFor(type: string, w: number, d: number): Fixture[] {
   switch (type) {
     case 'escola':
       return [
-        F('quadro', 0, bz - 0.5, 0, { color: '#1f6f4a', scale: [4, 1.6, 1] }),
+        F('quadro', 0, bz - 0.5, 0, { color: '#1f6f4a', scale: [4, 1.6, 1], action: { type: 'board' }, label: 'Escrever no quadro' }),
         F('escrivaninha', 0, bz + 2, Math.PI, { color: '#ffd23f', action: { type: 'job', job: 'professora' }, label: 'Dar aula' }),
         ...rows('escrivaninha', -9, 9, -3, 3, 4.5, 3, Math.PI, { color: '#5ab0ff', scale: [0.7, 0.9, 0.9] }),
         ...rows('banquinho', -9, 9, -2.2, 3.8, 4.5, 3, 0, { color: '#ff8fc7' }),
@@ -113,7 +113,8 @@ export function interiorFor(type: string, w: number, d: number): Fixture[] {
       ];
     case 'cafeteria':
       return [
-        F('balcao', 0, -2, Math.PI, { color: '#c8a27a', action: { type: 'job', job: 'cafe' }, label: 'Atender clientes' }),
+        F('balcao', 0, -2, Math.PI, { color: '#c8a27a', action: { type: 'prepare', recipe: 'bebida' }, label: 'Preparar bebida' }),
+        F('caixa-registradora', -4, -2, Math.PI, { action: { type: 'job', job: 'cafe' }, label: 'Trabalhar na cafeteria' }),
         F('maquina-cafe', -2, bz), F('vitrine', 2, bz + 0.3, 0, { color: '#ffffff', action: { type: 'snack', item: 'sorvete', name: 'um bolinho' }, label: 'Comer bolinho' }),
         ...rows('mesa-redonda', -6, 6, 3, 3, 6, 1, 0, { color: '#ffc2d9', scale: [0.8, 1, 0.8] }),
         ...rows('banquinho', -7, 7, 3, 3, 2, 1, 0, { color: '#8d5b3a' }), F('luzinhas', 0, bz - 0.3),

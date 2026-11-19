@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { AnimName, Appearance, NPCDef, NPCRoutineStep } from '../types';
 import { NPCS } from '../data/npcs';
-import { Avatar } from './Avatar';
+import { LodAvatar } from './Avatar';
 import { DEFAULT_APPEARANCE } from '../store/defaults';
 import { SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, EYE_COLORS } from '../data/palette';
 import { rt } from '../systems/runtime';
@@ -196,7 +196,7 @@ const NPCActor = memo(function NPCActor({ n }: { n: NPCDef }) {
   if (!near) return null;
   return (
     <group ref={group}>
-      <Avatar look={look} getAnim={() => st.current.anim} seed={n.id.length} />
+      <LodAvatar look={look} getAnim={() => st.current.anim} seed={n.id.length} getLook={npcLookAtPlayer(st.current.pos)} />
       <BlobShadow size={look.height || 1} />
       <sprite ref={bubble} position={[0, 2.5 * (look.height || 1), 0]} scale={[0.6, 0.6, 0.6]}>
         <spriteMaterial map={bubbleTex} transparent depthWrite={false} />
@@ -216,4 +216,13 @@ export function NPCs() {
       {list.map((n) => <NPCActor key={n.id} n={n} />)}
     </>
   );
+}
+
+const npcLookTmp = new THREE.Vector3();
+export function npcLookAtPlayer(pos: THREE.Vector3) {
+  return () => {
+    const P = rt.player.pos;
+    if (Math.hypot(P.x - pos.x, P.z - pos.z) > 6) return null;
+    return npcLookTmp.set(P.x, P.y + 1.4, P.z);
+  };
 }

@@ -72,6 +72,7 @@ export function Nature() {
   const crown2Ref = useRef<THREE.InstancedMesh>(null!);
   const pineRef = useRef<THREE.InstancedMesh>(null!);
   const palmRef = useRef<THREE.InstancedMesh>(null!);
+  const shadowRef = useRef<THREE.InstancedMesh>(null!);
   const round = trees.filter((t) => t.kind === 0);
   const pines = trees.filter((t) => t.kind === 1);
   const palms = trees.filter((t) => t.kind === 2);
@@ -121,6 +122,15 @@ export function Nature() {
       palmRef.current.setMatrixAt(i, o.matrix);
     });
     palmRef.current.instanceMatrix.needsUpdate = true;
+    trees.forEach((t, i) => {
+      o.position.set(t.x + 0.4, 0.02, t.z + 0.3);
+      o.rotation.set(-Math.PI / 2, 0, 0);
+      const r = (t.kind === 1 ? 2.6 : 3.2) * t.s;
+      o.scale.set(r, r, 1);
+      o.updateMatrix();
+      shadowRef.current.setMatrixAt(i, o.matrix);
+    });
+    shadowRef.current.instanceMatrix.needsUpdate = true;
   }, [trees, round, pines, palms]);
 
   return (
@@ -129,6 +139,7 @@ export function Nature() {
       <instancedMesh ref={crownRef} args={[GEO.sphereLow, mat('#ffffff'), round.length]} frustumCulled={false} />
       <instancedMesh ref={crown2Ref} args={[GEO.sphereLow, mat('#ffffff'), round.length]} frustumCulled={false} />
       <instancedMesh ref={pineRef} args={[GEO.coneLow, mat('#2f9e5a'), pines.length * 3]} frustumCulled={false} />
+      <instancedMesh ref={shadowRef} args={[new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.2, depthWrite: false }), trees.length]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={palmRef} args={[new THREE.ConeGeometry(0.5, 1, 6), mat('#3ccf6e'), palms.length]} frustumCulled={false} />
     </group>
   );

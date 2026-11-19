@@ -3,8 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { PetSpecies } from '../types';
 import { Bx, Cy, Sp, Co, To } from './prims';
+import { mat } from '../systems/materials';
 
-interface Props { species: PetSpecies; color: string; accessory: string; accColor: string; getAnim: () => 'idle' | 'walk' | 'run' | 'jump' | 'sleep' | 'happy' | 'fly' }
+interface Props { species: PetSpecies; color: string; accessory: string; accColor: string; getAnim: () => 'idle' | 'walk' | 'run' | 'jump' | 'sleep' | 'happy' | 'fly' | 'nuzzle' }
 
 function PetImpl({ species, color, accessory, accColor, getAnim }: Props) {
   const body = useRef<THREE.Group>(null!);
@@ -12,6 +13,8 @@ function PetImpl({ species, color, accessory, accColor, getAnim }: Props) {
   const tail = useRef<THREE.Group>(null!);
   const wings = useRef<THREE.Group[]>([]);
   const head = useRef<THREE.Group>(null!);
+  const neck = useRef<THREE.Group>(null!);
+  const mane = useRef<THREE.Group>(null!);
   const ph = useRef(Math.random() * 10);
   useFrame((_, dt) => {
     const a = getAnim();
@@ -24,7 +27,14 @@ function PetImpl({ species, color, accessory, accColor, getAnim }: Props) {
       body.current.position.y = a === 'happy' || a === 'jump' ? Math.abs(Math.sin(t * 1.5)) * 0.35 : a === 'fly' ? Math.sin(t * 0.5) * 0.15 : 0;
       body.current.rotation.z = a === 'sleep' ? 1.2 : 0;
     }
-    if (head.current) head.current.rotation.x = a === 'idle' ? Math.sin(t * 0.4) * 0.1 : 0;
+    if (head.current && !neck.current) head.current.rotation.x = a === 'idle' ? Math.sin(t * 0.4) * 0.1 : 0;
+    if (neck.current) {
+      const want = a === 'nuzzle' ? 0.85 : a === 'run' ? -0.15 : a === 'walk' ? Math.sin(t * 2) * 0.06 : Math.sin(t * 0.4) * 0.05;
+      neck.current.rotation.x = THREE.MathUtils.lerp(neck.current.rotation.x, want, Math.min(1, dt * 5));
+      if (head.current) head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, a === 'nuzzle' ? 0.35 + Math.sin(t * 3) * 0.08 : 0, Math.min(1, dt * 5));
+    }
+    if (mane.current) { mane.current.rotation.x = (a === 'run' ? -0.35 : a === 'walk' ? -0.15 : 0) + Math.sin(t * 2) * 0.06; }
+    if (tail.current && (species === 'unicornio' || species === 'cavalo')) tail.current.rotation.x = (a === 'run' ? 0.9 : a === 'walk' ? 0.45 : 0.15) + Math.sin(t * 1.7) * 0.15;
   });
   const dark = new THREE.Color(color).multiplyScalar(0.75).getStyle();
   const eyes = (z: number, y: number, sp = 0.09) => [-1, 1].map((s) => <group key={s}><Sp c="#1a1a2e" p={[s * sp, y, z]} s={[0.07, 0.08, 0.05]} /><Sp c="#ffffff" e={0.5} p={[s * sp + 0.015, y + 0.02, z + 0.02]} s={[0.025, 0.025, 0.02]} /></group>);
@@ -43,7 +53,9 @@ function PetImpl({ species, color, accessory, accColor, getAnim }: Props) {
       default: return null;
     }
   };
-  const neck = (y: number, z: number, r: number) =>
+  const neck2 = false;
+  const legs2 = (g: THREE.Group, i: number) => { legs.current[i] = g; };
+  const neckAcc = (y: number, z: number, r: number) =>
     accessory === 'coleira' ? <To c={accColor} p={[0, y, z]} s={[r, r, r]} r={[Math.PI / 2, 0, 0]} /> : accessory === 'bandana' ? <Co c={accColor} p={[0, y - 0.05, z + 0.05]} s={[r * 0.9, 0.2, r * 0.6]} r={[Math.PI, 0, 0]} /> : null;
 
   let model: React.ReactNode = null;
@@ -66,7 +78,7 @@ function PetImpl({ species, color, accessory, accColor, getAnim }: Props) {
             {cat ? [-1, 1].map((s) => <Co key={s} {...mc} p={[s * 0.12, 0.2, 0]} s={[0.12, 0.18, 0.08]} />) : [-1, 1].map((s) => <Sp key={s} c={dark} p={[s * 0.18, 0.02, -0.02]} s={[0.1, 0.24, 0.08]} r={[0, 0, s * 0.3]} />)}
             {acc(0.2, 0)}
           </group>
-          {neck(0.55, 0.28, 0.32)}
+          {neckAcc(0.55, 0.28, 0.32)}
           <group ref={tail} position={[0, 0.5, -0.33]}>
             <Cy {...mc} p={[0, 0.15, -0.1]} s={[crystal ? 0.2 : 0.07, 0.35, crystal ? 0.2 : 0.07]} r={[-0.7, 0, 0]} />
             {crystal && <Sp c="#ffffff" e={0.8} p={[0, 0.3, -0.25]} s={[0.15, 0.15, 0.15]} />}
@@ -95,25 +107,63 @@ function PetImpl({ species, color, accessory, accColor, getAnim }: Props) {
     case 'cavalo':
     case 'unicornio': {
       const uni = species === 'unicornio';
-      const mane = uni ? ['#ff8fc7', '#ffd23f', '#5ab0ff', '#9d4edd'] : [dark, dark, dark, dark];
+      const mane2 = uni ? ['#ff8fc7', '#ffd23f', '#7ee8c7', '#5ab0ff', '#c77dff'] : [dark, dark, dark, dark, dark];
+      const muzzle = uni ? '#ffe3f1' : new THREE.Color(color).multiplyScalar(0.9).getStyle();
+      const hoof = uni ? '#ffd23f' : '#4a3426';
+      const legs = [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const;
       model = (
         <group>
-          <Sp c={color} p={[0, 0.95, 0]} s={[0.55, 0.55, 1.1]} />
-          {legSet(0.75, 0.14, 0.17, 0.35)}
-          <group ref={head} position={[0, 1.35, 0.55]}>
-            <Cy c={color} p={[0, 0, 0]} s={[0.26, 0.6, 0.3]} r={[0.6, 0, 0]} />
-            <Sp c={color} p={[0, 0.25, 0.22]} s={[0.28, 0.28, 0.45]} />
-            {eyes(0.32, 0.32, 0.12)}
-            {[-1, 1].map((s) => <Co key={s} c={color} p={[s * 0.08, 0.45, 0.12]} s={[0.07, 0.15, 0.05]} />)}
-            {uni && <Co c="#ffd23f" e={0.6} p={[0, 0.55, 0.3]} s={[0.07, 0.35, 0.07]} r={[0.4, 0, 0]} />}
-            {mane.map((m, i) => <Sp key={i} c={m} p={[0, 0.3 - i * 0.12, -0.08 - i * 0.04]} s={[0.12, 0.16, 0.16]} />)}
-            {acc(0.4, 0.1, 1.3)}
+          {/* corpo */}
+          <Sp c={color} p={[0, 1.0, 0]} s={[0.5, 0.52, 1.05]} />
+          <Sp c={color} p={[0, 1.02, 0.32]} s={[0.5, 0.54, 0.5]} />
+          <Sp c={color} p={[0, 1.02, -0.34]} s={[0.48, 0.5, 0.48]} />
+          {/* pernas com joelho e casco */}
+          {legs.map(([x, z], i) => (
+            <group key={i} ref={(g) => { if (g) legs2(g, i); }} position={[x * 0.15, 0.85, z * 0.36]}>
+              <Cy c={color} p={[0, -0.2, 0]} s={[0.15, 0.42, 0.15]} />
+              <Sp c={color} p={[0, -0.42, 0]} s={[0.12, 0.12, 0.12]} />
+              <Cy c={color} p={[0, -0.6, 0]} s={[0.1, 0.36, 0.1]} />
+              <Cy c={hoof} e={uni ? 0.25 : 0} p={[0, -0.8, 0.01]} s={[0.13, 0.1, 0.14]} />
+            </group>
+          ))}
+          {/* pescoço + cabeça (abaixa para fazer carinho) */}
+          <group ref={neck} position={[0, 1.18, 0.42]}>
+            <Cy c={color} p={[0, 0.17, 0.14]} s={[0.25, 0.46, 0.3]} r={[0.8, 0, 0]} />
+            <group ref={head} position={[0, 0.36, 0.36]} rotation={[0.25, 0, 0]}>
+              <Sp c={color} s={[0.3, 0.3, 0.36]} />
+              <Sp c={muzzle} p={[0, -0.08, 0.22]} s={[0.22, 0.2, 0.26]} />
+              {[-1, 1].map((sd) => <Sp key={sd} c="#c06080" p={[sd * 0.05, -0.08, 0.34]} s={[0.035, 0.03, 0.02]} />)}
+              <mesh position={[0, -0.13, 0.3]} rotation={[0, 0, Math.PI]} material={mat('#c06080')}><torusGeometry args={[0.04, 0.008, 4, 10, Math.PI]} /></mesh>
+              {[-1, 1].map((s2) => (
+                <group key={s2}>
+                  <Sp c="#1a1a2e" p={[s2 * 0.12, 0.05, 0.12]} s={[0.07, 0.085, 0.05]} />
+                  <Sp c="#ffffff" e={0.8} p={[s2 * 0.12 + 0.015, 0.07, 0.15]} s={[0.025, 0.025, 0.015]} />
+                  {uni && [0, 1].map((k) => <Bx key={k} c="#1a1a2e" p={[s2 * (0.15 + k * 0.02), 0.11, 0.12]} s={[0.01, 0.03, 0.01]} r={[0, 0, s2 * -0.6]} />)}
+                  <Co c={color} p={[s2 * 0.08, 0.2, -0.04]} s={[0.07, 0.15, 0.05]} r={[-0.2, 0, s2 * -0.2]} />
+                  <Co c="#ffc2d9" p={[s2 * 0.08, 0.19, -0.02]} s={[0.035, 0.09, 0.02]} r={[-0.2, 0, s2 * -0.2]} />
+                </group>
+              ))}
+              {uni && (
+                <group position={[0, 0.2, 0.1]} rotation={[0.45, 0, 0]}>
+                  <Co c="#ffd23f" e={0.6} p={[0, 0.16, 0]} s={[0.07, 0.32, 0.07]} />
+                  {[0.06, 0.13, 0.2].map((y) => <To key={y} c="#fff3a6" e={0.5} p={[0, y, 0]} s={[0.1 - y * 0.3, 0.1 - y * 0.3, 0.1]} r={[Math.PI / 2, 0, 0]} />)}
+                </group>
+              )}
+              {acc(0.18, 0.05, 1.2)}
+            </group>
+            {/* crina */}
+            <group ref={mane} position={[0, 0.22, 0.02]}>
+              {mane2.map((m, i) => <Sp key={i} c={m} p={[0, 0.25 - i * 0.12, -0.02 - i * 0.03]} s={[0.12, 0.17, 0.17]} />)}
+              <Sp c={mane2[0]} p={[0, 0.48, 0.3]} s={[0.14, 0.12, 0.12]} />
+            </group>
           </group>
-          {neck(1.15, 0.4, 0.4)}
-          <group ref={tail} position={[0, 1.05, -0.55]}>
-            {mane.map((m, i) => <Sp key={i} c={m} p={[0, -0.1 - i * 0.12, -0.05 - i * 0.03]} s={[0.15, 0.18, 0.15]} />)}
+          {neck2 && neckAcc(0, 0, 0)}
+          {/* cauda */}
+          <group ref={tail} position={[0, 1.12, -0.6]}>
+            {mane2.map((m, i) => <Sp key={i} c={m} p={[0, -0.06 - i * 0.11, -0.06 - i * 0.03]} s={[0.15 - i * 0.012, 0.18, 0.15 - i * 0.012]} />)}
           </group>
-          <Bx c="#e63946" p={[0, 1.2, 0]} s={[0.58, 0.06, 0.4]} />
+          <Bx c="#e63946" p={[0, 1.27, 0]} s={[0.54, 0.05, 0.4]} />
+          <Bx c="#ffd23f" p={[0, 1.24, 0]} s={[0.56, 0.03, 0.42]} />
         </group>
       );
       break;

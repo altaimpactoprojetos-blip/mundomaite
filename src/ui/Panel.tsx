@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useGame } from '../store/gameStore';
 
-export function Panel({ title, icon, children, side, onClose, wide }: { title: string; icon: string; children: ReactNode; side?: boolean; onClose?: () => void; wide?: boolean }) {
+export function Panel({ title, icon, children, side, onClose, wide, footer }: { title: string; icon: string; children: ReactNode; side?: boolean; onClose?: () => void; wide?: boolean; footer?: ReactNode }) {
   const close = onClose ?? (() => useGame.getState().openPanel(null));
   const inner = (
     <div className="panel" style={wide ? { width: 'min(1100px, 100%)' } : undefined} onPointerDown={(e) => e.stopPropagation()}>
@@ -11,15 +11,16 @@ export function Panel({ title, icon, children, side, onClose, wide }: { title: s
         <button className="close" onClick={close} aria-label="Fechar">✖</button>
       </div>
       <div className="panel-body">{children}</div>
+      {footer && <div className="editor-foot">{footer}</div>}
     </div>
   );
   if (side) return <div className="side-panel">{inner}</div>;
   return <div className="backdrop" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>{inner}</div>;
 }
 
-export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+export function Tabs<T extends string>({ tabs, value, onChange, wrap }: { tabs: { id: T; label: string }[]; value: T; onChange: (v: T) => void; wrap?: boolean }) {
   return (
-    <div className="tabs">
+    <div className={`tabs ${wrap ? 'wrap' : ''}`}>
       {tabs.map((t) => (
         <button key={t.id} className={`tab ${t.id === value ? 'on' : ''}`} onClick={() => onChange(t.id)}>{t.label}</button>
       ))}

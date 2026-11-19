@@ -1,4 +1,8 @@
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { useNight } from '../game/hooks';
+import { getModel } from '../data/models';
+import type { PlacedObject } from '../types';
+import { sfx } from '../systems/audio';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Fixture, HouseConfig, PropertyDef } from '../types';
@@ -15,6 +19,7 @@ import { toWorld, useNear } from '../game/hooks';
 import { signTexture } from '../systems/textures';
 
 export const ROOM_W = 6;
+const MANSION_ID = 'lote-11';
 export const FLOOR_H = 3.4;
 const T = 0.3;
 const DOOR = 2.4;
@@ -54,7 +59,11 @@ function houseSegments(h: HouseConfig): Seg[] {
       const gap = 1.8;
       const part = (D - gap) / 2;
       segs.push({ lx: x, ly: y, lz: z0 - D / 2 + part / 2, w: 0.15, h: wh, d: part, floor: f, kind: 'part' });
-      segs.push({ lx: x, ly: y, lz: z0 + D / 2 - part / 2, w: 0.15, h: wh, d: part, floor: f, kind: 'part' });
+      if (f === 0 && Math.abs(x) < DOOR) {
+        // deixa um hall livre atrás da porta de entrada
+        const len = D / 2 - 2.6 - 0.9;
+        if (len > 0.3) segs.push({ lx: x, ly: y, lz: z0 + 0.9 + len / 2, w: 0.15, h: wh, d: len, floor: f, kind: 'part' });
+      } else segs.push({ lx: x, ly: y, lz: z0 + D / 2 - part / 2, w: 0.15, h: wh, d: part, floor: f, kind: 'part' });
     }
     // laje do andar de cima com buraco para a escada
     if (f > 0) {
@@ -80,7 +89,7 @@ function stairsBoxes(h: HouseConfig, ox: number, oz: number, rot: number): Box[]
   return out;
 }
 
-function autoFurniture(h: HouseConfig): Fixture[] {
+export function autoFurniture(h: HouseConfig): Fixture[] {
   if (!h.furnished) return [];
   const { W, D } = houseDims(h);
   const out: Fixture[] = [];
@@ -94,7 +103,7 @@ function autoFurniture(h: HouseConfig): Fixture[] {
       if (f === 0) {
         const role = r % 4;
         if (role === 0) { add('sofa', 0.5, zb + 0.8, 0, { color: '#ff8fc7' }); add('tv', 0.5, HOUSE_Z + 1.5, Math.PI); add('tapete', 0.5, HOUSE_Z - 1, 0, { color: '#d4b8ff' }); add('planta', 2, zf); }
-        if (role === 1) { add('geladeira', -2, zb + 0.2); add('fogao', -0.8, zb + 0.2); add('pia', 0.6, zb + 0.2); add('mesa', 0, HOUSE_Z + 1, 0, { color: '#ffffff' }); add('cadeira', -0.6, HOUSE_Z + 2, Math.PI); add('cadeira', 0.6, HOUSE_Z + 2, Math.PI); add('cadeira', 0, HOUSE_Z, 0); }
+        if (role === 1) { add('geladeira', -2, zb + 0.2); add('fogao', -0.8, zb + 0.2, 0, { action: { type: 'prepare', recipe: 'lanche' }, label: 'Preparar um lanche' }); add('pia', 0.6, zb + 0.2); add('mesa', 0, HOUSE_Z + 1, 0, { color: '#ffffff' }); add('cadeira', -0.6, HOUSE_Z + 2, Math.PI); add('cadeira', 0.6, HOUSE_Z + 2, Math.PI); add('cadeira', 0, HOUSE_Z, 0); }
         if (role === 2) { add('banheira', -1.3, zb + 0.5); add('espelho', 1.5, zb - 0.3); add('vaso-flor', 2, zf); }
         if (role === 3) { add('piano', 0, zb + 0.4); add('estante', 2, HOUSE_Z + 1, -Math.PI / 2); add('poltrona', -1.5, HOUSE_Z + 1, Math.PI / 2, { color: '#5ab0ff' }); }
       } else {
@@ -183,6 +192,53 @@ function HouseImpl({ def }: { def: PropertyDef }) {
 
   useFixtureLogic(`hfx-${def.id}`, fixtures, x, 0, z, rot);
 
+  // casa comprada: móveis viram objetos editáveis (dá para mudar de lugar e fica salvo)
+  useEffect(() => {
+    if (!isOwned || !cfg || !cfg.furnished) return;
+    const list: PlacedObject[] = autoFurniture(cfg).map((f, i) => {
+      const [wx, wz] = toWorld(x, z, rot, f.x, f.z);
+      return { id: `${def.id}-m${i}-${Date.now().toString(36)}`, model: f.model, pos: [wx, f.y ?? 0, wz], rotY: rot + (f.rot ?? 0), scale: f.scale ?? [1, 1, 1], color: f.color ?? getModel(f.model).color, texture: 'liso' };
+    });
+    const s = useGame.getState();
+    useGame.setState({ placed: [...s.placed, ...list] });
+    s.updateHouse(def.id, { furnished: false });
+  }, [isOwned, cfg, x, z, rot, def.id]);
+
+  // porta que abre e fecha
+  const [doorOpen, setDoorOpen] = useState(false);
+  const doorRef = useRef<THREE.Group>(null!);
+  useEffect(() => {
+    if (!cfg) return;
+    const [dx, dz] = toWorld(x, z, rot, 0, HOUSE_Z + dims.D / 2);
+    const p = new THREE.Vector3(dx, 0, dz);
+    const off = registerInteractable({
+      id: `door-${def.id}`, label: doorOpen ? 'Fechar porta' : 'Abrir porta', icon: '🚪', radius: 2.4, priority: 1.5, pos: () => p,
+      action: () => { setDoorOpen((o) => !o); sfx('door'); },
+    });
+    if (!doorOpen) setGroup(`door-${def.id}`, [localBox(x, 0, z, rot, 0, 0, HOUSE_Z + dims.D / 2 - T / 2, DOOR, DOOR_H, 0.3)]);
+    else removeGroup(`door-${def.id}`);
+    return () => { off(); removeGroup(`door-${def.id}`); };
+  }, [cfg, doorOpen, x, z, rot, def.id, dims.D]);
+  // abre sozinha quando a Maitê sai pela porta de dentro (para não ficar presa)
+  useEffect(() => { if (!cfg) return; const t = setInterval(() => {
+    const [dx, dz] = toWorld(x, z, rot, 0, HOUSE_Z + dims.D / 2 - 1.2);
+    if (!doorOpen && Math.hypot(rt.player.pos.x - dx, rt.player.pos.z - dz) < 0.9 && rt.player.moving) setDoorOpen(true);
+  }, 300); return () => clearInterval(t); }, [cfg, doorOpen, x, z, rot, dims.D]);
+
+  // luzes da casa
+  const night = useNight();
+  const lightOn = useGame((s) => s.houseLights[def.id]);
+  const lit = lightOn ?? (!isOwned && night && def.id.charCodeAt(def.id.length - 1) % 2 === 0);
+  useEffect(() => {
+    if (!cfg) return;
+    const [lx, lz] = toWorld(x, z, rot, DOOR / 2 + 1.1, HOUSE_Z + dims.D / 2 - 0.6);
+    const p = new THREE.Vector3(lx, 1, lz);
+    return registerInteractable({
+      id: `light-${def.id}`, label: lit ? 'Apagar a luz' : 'Acender a luz', icon: '💡', radius: 1.6, priority: 0.6, pos: () => p,
+      action: () => { const s = useGame.getState(); s.set({ houseLights: { ...s.houseLights, [def.id]: !lit } }); sfx('click'); },
+    });
+  }, [cfg, lit, x, z, rot, def.id, dims.D]);
+
   // caixa de correio: comprar / gerenciar
   useEffect(() => {
     const [mx, mz] = toWorld(x, z, rot, 3, def.lot[1] / 2 - 1.5);
@@ -231,12 +287,14 @@ function HouseImpl({ def }: { def: PropertyDef }) {
     <group position={[x, 0, z]} rotation={[0, rot, 0]}>
       {/* lote */}
       <Bx c={cfg ? '#a6e08f' : '#b8e6a0'} tex="grama" rep={6} p={[0, 0.02, 0]} s={[lw, 0.04, ld]} />
-      <Bx c="#e8d5b7" p={[0, 0.05, (ld / 2 + HOUSE_Z + dims.D / 2) / 2]} s={[2.4, 0.05, ld / 2 - HOUSE_Z - dims.D / 2 + 0.5]} />
+      <Bx c={def.id === MANSION_ID ? '#d8cfc0' : '#d9c7a8'} tex="tijolo" rep={3} p={[0, 0.05, (ld / 2 + HOUSE_Z + dims.D / 2) / 2]} s={[def.id === MANSION_ID ? 3.2 : 2.4, 0.06, ld / 2 - HOUSE_Z - dims.D / 2 + 0.5]} />
+      {def.id === MANSION_ID && [-1, 1].map((sd) => [0.25, 0.5, 0.75].map((t) => <group key={`${sd}${t}`} position={[sd * 2.3, 0, HOUSE_Z + dims.D / 2 + (ld / 2 - HOUSE_Z - dims.D / 2) * t]}><Cy c="#4a4e57" p={[0, 0.5, 0]} s={[0.1, 1, 0.1]} low /><Sp c="#fff3a6" e={1} p={[0, 1.05, 0]} s={[0.25, 0.25, 0.25]} /></group>))}
       {/* placa / caixa de correio */}
       <group position={[3, 0, ld / 2 - 1.5]}>
         <Cy c="#8d5b3a" p={[0, 0.6, 0]} s={[0.12, 1.2, 0.12]} />
         <Bx c={isOwned ? '#ff8fc7' : '#5ab0ff'} p={[0, 1.3, 0]} s={[0.5, 0.4, 0.7]} />
-        <mesh position={[0, 2.1, 0]}><planeGeometry args={[2.6, 0.65]} /><meshBasicMaterial map={sale} transparent side={THREE.DoubleSide} /></mesh>
+        <mesh position={[0, 2.1, 0.01]}><planeGeometry args={[2.6, 0.65]} /><meshBasicMaterial map={sale} transparent /></mesh>
+        <mesh position={[0, 2.1, -0.01]} rotation={[0, Math.PI, 0]}><planeGeometry args={[2.6, 0.65]} /><meshBasicMaterial map={sale} transparent /></mesh>
       </group>
       {!cfg && mid && (
         <>
@@ -258,16 +316,20 @@ function HouseImpl({ def }: { def: PropertyDef }) {
                   ))}
                 </group>
               ))}
-              {mid && <group ref={(g) => (winRefs.current[f] = g)}><HouseWindows W={dims.W} D={dims.D} f={f} trim="#ffffff" accent={cfg.roofColor} /></group>}
+              {mid && <group ref={(g) => (winRefs.current[f] = g)}><HouseWindows W={dims.W} D={dims.D} f={f} trim="#ffffff" accent={cfg.roofColor} lit={lit && night} /></group>}
               {f < cfg.floors - 1 && near && <Stairs W={dims.W} D={dims.D} f={f} />}
             </group>
           ))}
           {/* porta */}
           <Bx c="#ffffff" p={[0, DOOR_H + 0.1, HOUSE_Z + dims.D / 2 + 0.05]} s={[DOOR + 0.4, 0.2, 0.15]} />
           <Bx c="#c9c2b8" p={[0, 0.12, HOUSE_Z + dims.D / 2 + 0.8]} s={[DOOR + 1.4, 0.24, 1.4]} />
-          {/* porta de madeira aberta */}
-          <Bx c="#8d5b3a" tex="madeira" p={[DOOR / 2 - 0.05, DOOR_H / 2, HOUSE_Z + dims.D / 2 - 0.3 - DOOR / 2]} s={[0.08, DOOR_H, DOOR]} />
-          <Sp c="#ffd23f" p={[DOOR / 2 - 0.15, DOOR_H / 2, HOUSE_Z + dims.D / 2 - 0.3 - DOOR + 0.2]} s={[0.1, 0.1, 0.1]} />
+          {/* porta de madeira (abre e fecha) */}
+          <DoorLeaf open={doorOpen} z={HOUSE_Z + dims.D / 2 - T / 2} />
+          {/* interruptor e lâmpadas */}
+          <Bx c="#ffffff" p={[DOOR / 2 + 1.1, 1.2, HOUSE_Z + dims.D / 2 - T / 2 - 0.08]} s={[0.18, 0.26, 0.04]} />
+          <Sp c={lit ? '#ffd23f' : '#9aa0a6'} e={lit ? 1 : 0} p={[DOOR / 2 + 1.1, 1.24, HOUSE_Z + dims.D / 2 - T / 2 - 0.11]} s={[0.06, 0.06, 0.03]} />
+          {lit && near && Array.from({ length: cfg.floors }).map((_, f) => <pointLight key={f} position={[0, f * FLOOR_H + 2.6, HOUSE_Z]} intensity={10} distance={dims.W + 4} color="#ffe2a8" />)}
+          {Array.from({ length: cfg.floors }).map((_, f) => <Sp key={`l${f}`} c="#fff3c4" e={lit ? 1.4 : 0.1} p={[0, f * FLOOR_H + FLOOR_H - 0.25, HOUSE_Z]} s={[0.5, 0.2, 0.5]} />)}
           {/* quinas e rodapé */}
           {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => (
             <Bx key={`${sx}${sz}`} c="#ffffff" p={[sx * dims.W / 2, dims.H / 2, HOUSE_Z + sz * dims.D / 2]} s={[0.45, dims.H, 0.45]} />
@@ -307,8 +369,8 @@ function HouseImpl({ def }: { def: PropertyDef }) {
   );
 }
 
-function HouseWindows({ W, D, f, trim, accent = '#4a7bff' }: { W: number; D: number; f: number; trim: string; accent?: string }) {
-  const glass = mat('#bfe6ff', { emissive: 0.15 });
+function HouseWindows({ W, D, f, trim, accent = '#4a7bff', lit = false }: { W: number; D: number; f: number; trim: string; accent?: string; lit?: boolean }) {
+  const glass = lit ? mat('#ffe39a', { emissive: 1.1 }) : mat('#9fd4f5', { emissive: 0.12, rough: 0.15, metal: 0.3 });
   const fr = mat(trim);
   const y = f * FLOOR_H + 1.7;
   const list: [number, number, number][] = [];
@@ -379,6 +441,20 @@ function Fence({ lw, ld, color }: { lw: number; ld: number; color: string }) {
           <Bx c={color} p={[lw / 2, y, 0]} s={[0.06, 0.1, ld]} />
         </group>
       ))}
+    </group>
+  );
+}
+
+function DoorLeaf({ open, z }: { open: boolean; z: number }) {
+  const g = useRef<THREE.Group>(null!);
+  useFrame((_, dt) => { g.current.rotation.y = THREE.MathUtils.lerp(g.current.rotation.y, open ? -Math.PI / 2 + 0.1 : 0, Math.min(1, dt * 6)); });
+  return (
+    <group ref={g} position={[DOOR / 2, 0, z]}>
+      <Bx c="#8d5b3a" tex="madeira" p={[-DOOR / 2, DOOR_H / 2, 0]} s={[DOOR - 0.05, DOOR_H - 0.05, 0.1]} />
+      <Bx c="#6b4423" p={[-DOOR / 2, DOOR_H * 0.7, 0.06]} s={[DOOR * 0.7, 0.7, 0.03]} />
+      <Bx c="#6b4423" p={[-DOOR / 2, DOOR_H * 0.3, 0.06]} s={[DOOR * 0.7, 0.7, 0.03]} />
+      <Sp c="#ffd23f" p={[-DOOR + 0.25, DOOR_H / 2, 0.09]} s={[0.1, 0.1, 0.1]} />
+      <Sp c="#ffd23f" p={[-DOOR + 0.25, DOOR_H / 2, -0.09]} s={[0.1, 0.1, 0.1]} />
     </group>
   );
 }

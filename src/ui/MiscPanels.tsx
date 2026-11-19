@@ -8,6 +8,7 @@ import { STICKERS } from '../data/quests';
 import { teleportPlayer, spawnEffect, rt } from '../systems/runtime';
 import { sfx } from '../systems/audio';
 import { exitVehicle } from '../game/Vehicles';
+import { TourStartButton } from './TourBox';
 
 export function BagPanel() {
   const toys = useGame((s) => s.toys);
@@ -109,6 +110,11 @@ export function QuestsPanel() {
   const g = useGame.getState;
   return (
     <Panel title="Missões do Dia" icon="⭐">
+      <div className="card" style={{ flexDirection: 'row', gap: 10, marginBottom: 10, background: '#f6efff' }}>
+        <span style={{ fontSize: 40 }}>🦄</span>
+        <div style={{ flex: 1, textAlign: 'left' }}><b>Um passeio com Purpurina</b><div className="muted">Escolha uma roupa, diga oi à vizinha, monte no Purpurina, sirva na cafeteria e tire uma foto na fonte!</div></div>
+        <TourStartButton />
+      </div>
       <p className="muted">Todo dia tem missões novas! Complete para ganhar moedinhas e adesivos ✨</p>
       {quests.map((q) => (
         <div key={q.id} className="card" style={{ flexDirection: 'row', textAlign: 'left', gap: 10, marginBottom: 8 }}>

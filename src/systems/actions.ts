@@ -29,6 +29,8 @@ export function actionLabel(a: ActionSpec, fallback = 'Usar'): { label: string; 
     case 'dance': return { label: 'Dançar', icon: '💃' };
     case 'garage': return { label: 'Garagem', icon: '🚗' };
     case 'mailbox': return { label: 'Caixa de correio', icon: '📬' };
+    case 'prepare': return { label: a.recipe === 'lanche' ? 'Preparar um lanche' : 'Preparar bebida', icon: a.recipe === 'lanche' ? '🥪' : '🥤' };
+    case 'board': return { label: 'Escrever no quadro', icon: '✏️' };
   }
 }
 
@@ -102,5 +104,7 @@ export function runAction(a: ActionSpec, pos: THREE.Vector3, yaw: number, seatY 
       break;
     }
     case 'ride': break;
+    case 'prepare': g.set({ overlay: { kind: 'prepare', data: a.recipe } }); break;
+    case 'board': g.set({ overlay: { kind: 'board' } }); break;
   }
 }

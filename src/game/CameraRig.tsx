@@ -23,6 +23,7 @@ export function CameraRig() {
   fogRef.scene = scene;
   const desired = useRef(new THREE.Vector3());
   const tgt = useRef(new THREE.Vector3());
+  const lookAhead = useRef(0);
 
   useEffect(() => {
     const el = gl.domElement;
@@ -53,6 +54,7 @@ export function CameraRig() {
         return;
       }
       if (rt.dragging) return;
+      if (useGame.getState().panel === 'character') { rt.player.yaw += dx * 0.012; rt.player.seat = null; return; }
       const sens = useGame.getState().settings.camSens * (e.pointerType === 'touch' ? 0.007 : 0.005);
       rt.cam.yaw -= dx * sens;
       if (useGame.getState().settings.camMode !== 'habbo') rt.cam.pitch = THREE.MathUtils.clamp(rt.cam.pitch + dy * sens, -0.15, 1.35);
@@ -132,29 +134,42 @@ export function CameraRig() {
         rt.cam.yaw += diff * Math.min(1, dt * 2.5);
       }
     } else {
-      target = tgt.current.copy(rt.player.pos).add(new THREE.Vector3(0, rt.player.mounted ? 2.6 : 1.5, 0));
+      target = tgt.current.copy(rt.player.pos).add(new THREE.Vector3(0, rt.player.mounted ? 3.0 : 1.35, 0));
+      if (rt.player.mounted) dist = Math.max(dist, 8.5);
+      // olha um pouco à frente do caminho
+      const movingNow = rt.player.anim === 'walk' || rt.player.anim === 'run' || (rt.player.mounted && rt.player.anim === 'ride');
+      lookAhead.current = THREE.MathUtils.lerp(lookAhead.current, movingNow ? 1.4 : 0, Math.min(1, dt * 2));
+      target.x += Math.sin(rt.player.yaw) * lookAhead.current;
+      target.z += Math.cos(rt.player.yaw) * lookAhead.current;
+      // segue suavemente atrás da Maitê quando ela anda
+      if (movingNow && rt.time - lastUserCam > 2 && s.panel !== 'character' && s.settings.camMode !== 'habbo') {
+        let d2 = rt.player.yaw + Math.PI - rt.cam.yaw;
+        while (d2 > Math.PI) d2 -= Math.PI * 2;
+        while (d2 < -Math.PI) d2 += Math.PI * 2;
+        if (Math.abs(d2) < 2.6) rt.cam.yaw += d2 * Math.min(1, dt * 0.9);
+      }
       if (s.buildMode) dist = Math.max(dist, 12);
       if (s.panel === 'character') {
-        // vitrine: câmera de frente para a personagem
-        let diff = rt.player.yaw - rt.cam.yaw;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        if (rt.time - lastUserCam > 1) rt.cam.yaw += diff * Math.min(1, dt * 4);
-        dist = 3.4;
-        target.y -= 0.45;
+        // vitrine: câmera fixa de frente; arrastar gira a Maitê
+        rt.cam.yaw = rt.cam.editorYaw;
+        const close = rt.editorFocus === 'rosto';
+        dist = close ? 2.0 : 5.6;
+        target.copy(rt.player.pos);
+        target.y += close ? 1.55 * (s.appearance.height || 1) : 0.85;
         const side = window.innerWidth > window.innerHeight ? 1 : 0;
-        target.x += Math.cos(rt.cam.yaw) * 1.1 * side;
-        target.z -= Math.sin(rt.cam.yaw) * 1.1 * side;
-        if (side === 0) target.y -= 0.9;
+        const off = close ? 0.6 : 1.6;
+        target.x += Math.cos(rt.cam.yaw) * off * side;
+        target.z -= Math.sin(rt.cam.yaw) * off * side;
+        if (side === 0) target.y -= close ? 0.35 : 1.0;
       }
     }
     const habbo = s.settings.camMode === 'habbo';
     const cam = camera as THREE.PerspectiveCamera;
     const wantFov = habbo ? 13 : 55;
     if (Math.abs(cam.fov - wantFov) > 0.01) { cam.fov = THREE.MathUtils.lerp(cam.fov, wantFov, Math.min(1, dt * 6)); if (Math.abs(cam.fov - wantFov) < 0.2) cam.fov = wantFov; cam.updateProjectionMatrix(); }
-    let pitch = rt.cam.pitch;
+    let pitch = s.panel === 'character' ? 0.12 : rt.cam.pitch;
     if (habbo) {
-      pitch = s.panel === 'character' ? 0.35 : 0.62;
+      pitch = s.panel === 'character' ? 0.12 : 0.62;
       dist = dist * (55 / cam.fov) * (s.panel === 'character' ? 1 : 2);
     }
     const cp = Math.cos(pitch);
@@ -176,7 +191,7 @@ export function CameraRig() {
       desired.current.copy(target).addScaledVector(dir, ok);
     }
     if (desired.current.y < target.y - 1.2) desired.current.y = target.y - 1.2;
-    camera.position.lerp(desired.current, Math.min(1, dt * 10));
+    camera.position.lerp(desired.current, Math.min(1, dt * 7));
     if (rt.cam.shake > 0) {
       camera.position.x += (Math.random() - 0.5) * rt.cam.shake;
       camera.position.y += (Math.random() - 0.5) * rt.cam.shake;

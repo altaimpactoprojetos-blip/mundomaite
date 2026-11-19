@@ -7,7 +7,7 @@ import { rt } from '../systems/runtime';
 import { registerInteractable } from '../systems/interactions';
 import { useGame } from '../store/gameStore';
 import { sfx } from '../systems/audio';
-import { Avatar } from '../game/Avatar';
+import { AvatarLow } from '../game/Avatar';
 import { npcLook } from '../game/NPCs';
 import { NPC_MAP } from '../data/npcs';
 
@@ -112,7 +112,7 @@ function Car({ r }: { r: (typeof ROUTES)[number] }) {
   return (
     <group ref={g}>
       <VehicleModel vtype={r.type} color={r.color} speedRef={sr} />
-      {r.type !== 'onibus' && <group position={[-0.45, 0.25, -0.2]}><Avatar look={driver} anim="drive" /></group>}
+      {r.type !== 'onibus' && <group position={[-0.45, 0.25, -0.2]}><AvatarLow look={driver} anim="drive" /></group>}
     </group>
   );
 }

@@ -23,3 +23,17 @@ export function toWorld(ox: number, oz: number, rot: number, lx: number, lz: num
   const s = Math.sin(rot);
   return [ox + lx * c + lz * s, oz - lx * s + lz * c];
 }
+
+/** Verdadeiro à noite (checado a cada 2s) */
+export function useNight() {
+  const [night, setNight] = useState(false);
+  const acc = useRef(2);
+  useFrame((_, dt) => {
+    acc.current += dt;
+    if (acc.current < 2) return;
+    acc.current = 0;
+    const n = rt.hour < 6.2 || rt.hour > 18.3;
+    if (n !== night) setNight(n);
+  });
+  return night;
+}

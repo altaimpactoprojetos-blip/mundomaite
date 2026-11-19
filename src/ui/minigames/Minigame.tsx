@@ -7,7 +7,7 @@ import { QuizGame } from './QuizGame';
 import { RhythmGame } from './RhythmGame';
 import { PaintGame } from './PaintGame';
 import { MallGame } from './MallGame';
-import { makeTask } from '../../game/Tasks';
+import { makeTask, makeCafeTask } from '../../game/Tasks';
 import { sfx } from '../../systems/audio';
 import { spawnEffect, rt } from '../../systems/runtime';
 
@@ -59,7 +59,8 @@ export function Minigame() {
           <div className="muted">📍 {p.place}</div>
           <div className="row">
             {p.outfit && <button className="btn lilac" onClick={wear}>👔 Vestir uniforme</button>}
-            <button className="btn big pink" onClick={start}>▶ Começar!</button>
+            <button className="btn big pink" onClick={start}>▶ {job === 'cafe' ? 'Balcão rápido' : 'Começar!'}</button>
+            {job === 'cafe' && <button className="btn big lilac" onClick={() => { g().setTask(makeCafeTask(3)); g().toast('3 clientes chegaram! Veja os pedidos nas mesas e prepare no balcão ☕', '☕'); close(); }}>🍽️ Servir nas mesas</button>}
           </div>
         </div>
       )}

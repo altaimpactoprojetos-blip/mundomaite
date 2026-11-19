@@ -11,7 +11,18 @@ import { exitVehicle } from '../game/Vehicles';
 import { sfx } from '../systems/audio';
 import { takePhoto } from './photo';
 import { findNearest } from '../systems/interactions';
-import { petFx } from '../game/Pets';
+import { petFx, petCuddle } from '../game/Pets';
+import { TourBox } from './TourBox';
+import { PETS } from '../data/pets';
+
+export function callPet(id: string) {
+  const s = useGame.getState();
+  s.set({ activePet: id });
+  petFx.callAt = rt.time;
+  const p = s.pets.find((x) => x.id === id);
+  if (p) s.set({ petMenu: id });
+  sfx('sparkle');
+}
 
 const MENU: { id: PanelId; icon: string; label: string }[] = [
   { id: 'character', icon: '👗', label: 'Visual' },
@@ -61,8 +72,10 @@ function TaskBox() {
   const task = useGame((s) => s.task);
   if (!task) return null;
   const left = task.targets.filter((t) => !t.done).length;
+  const tourOn = useGame.getState().tour && !useGame.getState().tour?.done;
+  if (tourOn && task.kind === 'cafe') return null;
   return (
-    <div className="task-box">
+    <div className="task-box" style={tourOn ? { top: 'calc(190px + var(--safe-t))' } : undefined}>
       🎯 {task.title}: <b>{task.targets.length - left}/{task.targets.length}</b>
       <div className="row" style={{ marginTop: 4 }}>{task.targets.map((t) => <span key={t.id} style={{ opacity: t.done ? 0.3 : 1 }}>{t.done ? '✅' : t.icon}</span>)}
         <button className="btn small" onClick={() => useGame.getState().setTask(null)}>Parar</button>
@@ -122,7 +135,7 @@ function Actions() {
                 rt.player.mounted = rt.player.mounted ? null : pet.id;
                 s.toast(rt.player.mounted ? `Você montou em ${pet.name}! 🐴` : 'Desceu do pet', '🐴');
                 if (rt.player.mounted) s.track('ride');
-              } else { petFx.happyUntil = rt.time + 2; s.petCare(pet.id, 'play'); spawnEffect('hearts', rt.player.pos); s.toast(`${pet.name} adorou brincar!`, '🐾'); }
+              } else { petCuddle(); s.petCare(pet.id, 'pet'); s.toast(`${pet.name} adorou o carinho!`, '🐾'); }
               setWheel(false);
             }}>{['cavalo', 'unicornio'].includes(pet.species) ? '🐴' : '🎾'}<small>{['cavalo', 'unicornio'].includes(pet.species) ? 'Montar' : 'Pet'}</small></button>
           )}
@@ -131,9 +144,10 @@ function Actions() {
       )}
       <div className="actions">
         <button className="round" onClick={() => setWheel(!wheel)}>😊<small>Ações</small></button>
+        {pet && <button className="round" onClick={() => callPet(pet.id)}>{PETS[pet.species].icon}<small>Chamar</small></button>}
         <button className="round" style={run ? { background: '#ffd6e8' } : undefined} onClick={() => { touchBtns.run = !run; setRun(!run); }}>🏃<small>Correr</small></button>
         <button className="round main" {...hold('jump')} onClick={() => press(' ')}>⬆️</button>
-        {ui.prompt && <button className="round main" style={{ gridColumn: '3', background: 'linear-gradient(180deg,#ffb3d9,#ff5fa2)' }} onClick={() => { const it = findNearest(rt.player.pos); it?.action(); }}>✋</button>}
+        {ui.prompt && <button className="round main" style={{ gridColumn: '3', background: 'linear-gradient(180deg,#ffb3d9,#ff5fa2)' }} onClick={() => { const it = findNearest(rt.player.pos, rt.player.yaw); it?.action(); }}>✋</button>}
       </div>
     </>
   );
@@ -148,6 +162,7 @@ export function HUD() {
   const openPanel = useGame((s) => s.openPanel);
   const quests = useGame((s) => s.quests.list);
   const questReady = quests.some((q) => q.progress >= q.target && !q.claimed);
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <>
       <div className="hud-top">
@@ -156,15 +171,23 @@ export function HUD() {
         <Clock />
         <Zone />
       </div>
-      <div className="menu-bar">
-        {MENU.map((b) => (
-          <button key={b.id} className="round" onClick={() => openPanel(b.id === 'build' && buildMode ? null : b.id)}
-            style={(b.id === 'build' && buildMode) || (b.id === 'quests' && questReady) ? { background: '#ffd6e8' } : undefined}>
-            {b.icon}<small>{b.label}</small>
-          </button>
-        ))}
+      <div className="menu-quick">
+        <button className="round" onClick={() => openPanel('map')}>🗺️<small>Mapa</small></button>
+        <button className="round" onClick={() => openPanel('bag')}>🎒<small>Mochila</small></button>
+        <button className="round" style={menuOpen || questReady ? { background: '#ffd6e8' } : undefined} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? '✖' : '☰'}<small>Menu</small></button>
       </div>
+      {menuOpen && (
+        <div className="menu-bar" onClick={() => setMenuOpen(false)}>
+          {MENU.filter((b) => b.id !== 'map' && b.id !== 'bag').map((b) => (
+            <button key={b.id} className="round" onClick={() => openPanel(b.id === 'build' && buildMode ? null : b.id)}
+              style={(b.id === 'build' && buildMode) || (b.id === 'quests' && questReady) ? { background: '#ffd6e8' } : undefined}>
+              {b.icon}<small>{b.label}</small>
+            </button>
+          ))}
+        </div>
+      )}
       {showMap && !buildMode && <Minimap />}
+      <TourBox />
       <TaskBox />
       <Joystick mini={buildMode} />
       {!buildMode && <Actions />}

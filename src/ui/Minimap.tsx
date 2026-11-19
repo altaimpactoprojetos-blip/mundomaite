@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { ROADS, ZONES, BUILDINGS, ISLANDS, SEA_Z, BEACH_Z, PROPERTIES } from '../data/world';
+import { ROADS, ZONES, BUILDINGS, ISLANDS, SEA_Z, BEACH_Z, PROPERTIES, PLACES } from '../data/world';
+import { TOUR } from '../data/tour';
+import { tourTarget } from '../game/Tour';
 import { rt } from '../systems/runtime';
 import { useGame } from '../store/gameStore';
 
@@ -43,6 +45,15 @@ export function drawWorld(g: CanvasRenderingContext2D, size: number, owned: Reco
   }
   g.fillStyle = '#ff8fc7';
   g.beginPath(); g.arc(X(65), Z(-5), 22 * s, 0, 7); g.fill();
+  // destinos
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = `${Math.max(10, 16 * s)}px sans-serif`;
+  for (const p of PLACES) {
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    g.beginPath(); g.arc(X(p.x), Z(p.z), 9 * Math.max(0.7, s), 0, 7); g.fill();
+    g.fillText(p.icon, X(p.x), Z(p.z) + 1);
+  }
 }
 
 export function Minimap() {
@@ -81,6 +92,19 @@ export function Minimap() {
       g.fill(); g.stroke();
       g.restore();
       // tarefa
+      const tour = useGame.getState().tour;
+      const tt = tour && !tour.done ? tourTarget(TOUR[tour.step].id) : null;
+      if (tt) {
+        const dx = tt.x - p.x, dz = tt.z - p.z;
+        const a = rt.cam.yaw;
+        let rx = (dx * Math.cos(a) - dz * Math.sin(a)) * zoom * (W / 128);
+        let rz = (dx * Math.sin(a) + dz * Math.cos(a)) * zoom * (W / 128);
+        const l = Math.hypot(rx, rz);
+        if (l > W / 2 - 12) { rx = (rx / l) * (W / 2 - 12); rz = (rz / l) * (W / 2 - 12); }
+        g.fillStyle = '#9d4edd';
+        g.beginPath(); g.arc(W / 2 + rx, W / 2 + rz, 9, 0, 7); g.fill();
+        g.font = '13px sans-serif'; g.textAlign = 'center'; g.fillText('⭐', W / 2 + rx, W / 2 + rz + 5);
+      }
       const task = useGame.getState().task;
       if (task) {
         for (const tg of task.targets.filter((x) => !x.done)) {

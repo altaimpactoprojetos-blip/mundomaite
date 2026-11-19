@@ -9,6 +9,7 @@ import { questsFor, todayKey, STICKERS } from '../data/quests';
 import { PETS } from '../data/pets';
 import { VEHICLES } from '../data/vehicles';
 import { sfx } from '../systems/audio';
+import { TOUR } from '../data/tour';
 
 export type PanelId =
   | 'character' | 'shop' | 'house' | 'build' | 'vehicles' | 'pets' | 'map' | 'settings' | 'bag' | 'jobs'
@@ -77,6 +78,10 @@ export interface SaveData {
   playerPos: Vec3;
   hour: number;
   version: number;
+  tour: { step: number; home: string; done: boolean } | null;
+  tourDone: number;
+  houseLights: Record<string, boolean>;
+  schoolBoard: string | null;
 }
 
 interface Transient {
@@ -89,10 +94,11 @@ interface Transient {
   toasts: { id: number; text: string; icon: string }[];
   dialog: { npcId: string; text: string; icon?: string } | null;
   minigame: string | null; // id da profissão
-  overlay: null | { kind: 'cinema' | 'tv' | 'sleep' | 'gift' | 'rest' | 'piano' | 'pin'; data?: string };
+  overlay: null | { kind: 'cinema' | 'tv' | 'sleep' | 'gift' | 'rest' | 'piano' | 'pin' | 'prepare' | 'board'; data?: string };
   task: WorldTask | null;
   pinOk: boolean;
   photoFlash: number;
+  petMenu: string | null;
 }
 
 interface Actions {
@@ -135,6 +141,7 @@ interface Actions {
   completeTarget: (id: string) => void;
   farmAction: (plot: string) => void;
   resetAll: () => void;
+  tourEvent: (ev: string) => void;
 }
 
 export type GameState = SaveData & Transient & Actions;
@@ -172,6 +179,10 @@ export const initialSave = (): SaveData => ({
   playerPos: [65, 0, 30],
   hour: 9,
   version: 1,
+  tour: null,
+  tourDone: 0,
+  houseLights: {},
+  schoolBoard: null,
 });
 
 export const SAVE_KEYS = Object.keys(initialSave()) as (keyof SaveData)[];
@@ -194,6 +205,7 @@ export const useGame = create<GameState>()((set, get) => ({
   task: null,
   pinOk: false,
   photoFlash: 0,
+  petMenu: null,
 
   set: (p) => set(p),
   hydrate: (d) => {
@@ -440,6 +452,25 @@ export const useGame = create<GameState>()((set, get) => ({
     get().track('harvest');
   },
   resetAll: () => set({ ...initialSave(), screen: 'title', panel: null }),
+  tourEvent: (ev) => {
+    const s = get();
+    const t = s.tour;
+    if (!t || t.done) return;
+    const step = TOUR[t.step];
+    if (!step || step.ev !== ev) return;
+    const next = t.step + 1;
+    sfx('fanfare');
+    if (next >= TOUR.length) {
+      set({ tour: { ...t, step: next, done: true }, tourDone: s.tourDone + 1 });
+      s.earn(300, 'passeio completo');
+      const sticker = STICKERS.find((st) => !get().stickers.includes(st));
+      if (sticker) set({ stickers: [...get().stickers, sticker] });
+      s.toast('🎉 Passeio com Purpurina completo! A foto está no seu Álbum 📸', '🦄');
+      return;
+    }
+    set({ tour: { ...t, step: next } });
+    s.toast(`✅ ${step.title}! Agora: ${TOUR[next].title}`, TOUR[next].icon);
+  },
 }));
 
 export const pickSave = (s: GameState): SaveData => {

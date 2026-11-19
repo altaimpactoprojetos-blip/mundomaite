@@ -139,7 +139,8 @@ function Driven() {
     const a = Math.abs(target) > Math.abs(V.speed) ? def.accel : def.accel * 1.6;
     V.speed += THREE.MathUtils.clamp(target - V.speed, -a * dt, a * dt);
     const steerFactor = def.medium === 'air' ? 1 : THREE.MathUtils.clamp(Math.abs(V.speed) / 6, 0, 1) * Math.sign(V.speed || 1);
-    const steer = -mv.x * def.turn * steerFactor * dt;
+    V.steer = THREE.MathUtils.lerp(V.steer, -mv.x, Math.min(1, dt * 5));
+    const steer = V.steer * def.turn * steerFactor * dt;
     V.yaw += steer;
     V.roll = THREE.MathUtils.lerp(V.roll, def.medium === 'ground' ? 0 : -mv.x * 0.35, dt * 4);
 

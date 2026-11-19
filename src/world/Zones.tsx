@@ -32,7 +32,7 @@ function useBoxes(key: string, boxes: Box[]) {
 
 function Label({ text, icon, p, w = 8 }: { text: string; icon?: string; p: [number, number, number]; w?: number }) {
   const t = useMemo(() => signTexture(text, '#ffffff', '#e83e8c', icon), [text, icon]);
-  return <mesh position={p}><planeGeometry args={[w, w / 4]} /><meshBasicMaterial map={t} transparent side={THREE.DoubleSide} /></mesh>;
+  return <group position={p}>{[0, Math.PI].map((r) => <mesh key={r} rotation={[0, r, 0]} position={[0, 0, r ? -0.01 : 0.01]}><planeGeometry args={[w, w / 4]} /><meshBasicMaterial map={t} transparent /></mesh>)}</group>;
 }
 
 // ---------------- Praça central ----------------

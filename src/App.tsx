@@ -18,6 +18,7 @@ import { BagPanel, JobsPanel, PhotosPanel, QuestsPanel } from './ui/MiscPanels';
 import { Dialogue } from './ui/Dialogue';
 import { Overlays } from './ui/Overlays';
 import { Minigame } from './ui/minigames/Minigame';
+import { PetMenu } from './ui/PetMenu';
 import { todayKey } from './data/quests';
 
 function Toasts() {
@@ -104,6 +105,7 @@ export default function App() {
           <HUD />
           <Panels />
           <Dialogue />
+          <PetMenu />
           {job && <Minigame key={job} />}
           <Overlays />
         </div>

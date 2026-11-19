@@ -1,4 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { rt } from '../systems/runtime';
+import { saveNow } from '../store/persistence';
 import { useGame } from '../store/gameStore';
 import { Panel, Swatches, Tabs } from './Panel';
 import { SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS } from '../data/palette';
@@ -24,10 +26,27 @@ export function CharacterEditor() {
   const creative = useGame((s) => s.creative);
   const wardrobe = useGame((s) => s.wardrobe);
   const tracked = useRef(false);
+  const [snapshot] = useState(() => JSON.parse(JSON.stringify(useGame.getState().appearance)) as Appearance);
+  useEffect(() => {
+    rt.cam.editorYaw = rt.player.yaw;
+    rt.player.seat = null;
+    return () => { rt.editorFocus = 'corpo'; rt.cam.yaw = rt.player.yaw + Math.PI; };
+  }, []);
+  useEffect(() => { rt.editorFocus = tab === 'rosto' || tab === 'cabelo' || tab === 'maquiagem' ? 'rosto' : 'corpo'; }, [tab]);
+  const saveLook = () => {
+    const s = useGame.getState();
+    s.toast('Visual salvo! Você está linda! 💖', '💾');
+    s.track('style');
+    s.tourEvent('salvar-visual');
+    sfx('fanfare');
+    void saveNow();
+    s.openPanel(null);
+  };
+  const cancel = () => { set(snapshot); useGame.getState().openPanel(null); sfx('click'); };
   const change = (p: Partial<Appearance>) => {
     set(p);
     sfx('pop');
-    if (!tracked.current) { tracked.current = true; useGame.getState().track('style'); }
+    tracked.current = true;
   };
   const owns = (id: string) => creative || wardrobe.includes(`w-${id}`) || ROLE_ACCS.some((r) => r[0] === id && wardrobe.includes(`w-${id}`));
   const Item = ({ id, name, icon, on, onPick, price }: { id: string; name: string; icon: string; on: boolean; onPick: () => void; price?: number }) => {
@@ -50,8 +69,10 @@ export function CharacterEditor() {
   };
 
   return (
-    <Panel title="Meu Personagem" icon="👗" side>
+    <Panel title="Meu Personagem" icon="👗" side onClose={saveLook} footer={<><button className="btn" onClick={cancel}>↩️ Cancelar</button><button className="btn pink" onClick={saveLook}>💾 Salvar visual</button></>}>
+      <div className="muted" style={{ marginBottom: 4 }}>👆 Arraste a tela para girar a Maitê</div>
       <Tabs<Tab>
+        wrap
         tabs={[{ id: 'jeito', label: '😊 Eu' }, { id: 'rosto', label: '👀 Rosto' }, { id: 'cabelo', label: '💇 Cabelo' }, { id: 'roupas', label: '👗 Roupas' }, { id: 'calcados', label: '👟 Sapatos' }, { id: 'acessorios', label: '🎀 Acessórios' }, { id: 'maquiagem', label: '💄 Maquiagem' }]}
         value={tab} onChange={setTab}
       />

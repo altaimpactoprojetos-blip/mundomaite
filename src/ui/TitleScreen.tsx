@@ -1,6 +1,7 @@
 import { useGame, type PanelId } from '../store/gameStore';
 import { unlockAudio, startMusic, sfx } from '../systems/audio';
 import { DAILY_GIFTS, todayKey, STICKERS } from '../data/quests';
+import { startTour } from '../game/Tour';
 
 export function enterGame(panel: PanelId | null = null) {
   unlockAudio();
@@ -42,6 +43,7 @@ export function TitleScreen() {
       </div>
       <div className="title-menu">
         <button className="btn pink play" onClick={() => enterGame(null)}>▶ Jogar</button>
+        <button className="btn lilac play" style={{ fontSize: 18, padding: 10 }} onClick={() => { enterGame(null); setTimeout(() => startTour(), 50); }}>🦄 Um passeio com Purpurina</button>
         {ITEMS.map((i) => (
           <button key={i.label} className="btn" onClick={() => enterGame(i.id)}><span className="i">{i.icon}</span>{i.label}</button>
         ))}

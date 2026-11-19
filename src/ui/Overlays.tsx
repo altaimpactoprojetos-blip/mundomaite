@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGame } from '../store/gameStore';
 import { rt } from '../systems/runtime';
 import { sfx } from '../systems/audio';
+import { Prepare, BoardDraw } from './Prepare';
 
 const MOVIES = [
   { title: 'As Aventuras do Coelho Espacial', scenes: [['🐰', '🚀', 'Era uma vez um coelhinho que sonhava com as estrelas...'], ['🚀', '🌙', 'Ele construiu um foguete de cenoura!'], ['🌙', '👽', 'Na Lua, encontrou um amigo verdinho!'], ['👽', '🎉', 'Eles fizeram uma festa espacial!'], ['🪐', '🐰', 'E voltaram para casa antes do jantar.'], ['💖', '✨', 'FIM — Amigos são o melhor tesouro!']] },
@@ -137,6 +138,8 @@ export function Overlays() {
     case 'piano': return <Piano />;
     case 'rest': return <Rest />;
     case 'gift': return <Gift />;
+    case 'prepare': return <Prepare />;
+    case 'board': return <BoardDraw />;
   }
   return null;
 }

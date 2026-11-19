@@ -22,7 +22,7 @@ export function unregister(id: string) {
   items.delete(id);
 }
 
-export function findNearest(p: THREE.Vector3): Interactable | null {
+export function findNearest(p: THREE.Vector3, yaw?: number): Interactable | null {
   let best: Interactable | null = null;
   let bestScore = Infinity;
   for (const it of items.values()) {
@@ -32,7 +32,13 @@ export function findNearest(p: THREE.Vector3): Interactable | null {
     if (dy > 2.6) continue;
     const d = Math.hypot(ip.x - p.x, ip.z - p.z);
     if (d > it.radius) continue;
-    const score = d - (it.priority ?? 0);
+    let score = d - (it.priority ?? 0);
+    if (yaw !== undefined && d > 0.3) {
+      // prioriza o que está na frente da Maitê
+      const fx = Math.sin(yaw), fz = Math.cos(yaw);
+      const dot = ((ip.x - p.x) * fx + (ip.z - p.z) * fz) / d;
+      score += (1 - dot) * 3;
+    }
     if (score < bestScore) {
       bestScore = score;
       best = it;
