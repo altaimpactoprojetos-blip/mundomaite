@@ -10,7 +10,6 @@ import { todayKey } from '../data/quests';
 import { botLook } from './engine';
 import { drawAvatar } from './avatar';
 import { sfx, unlockAudio, startMusic } from '../systems/audio';
-import { PETS } from '../data/pets';
 import { SettingsPanel, HelpPanel } from '../ui/SettingsPanel';
 import { BUILD_COLORS, CLOTH_COLORS, HAIR_COLORS, SKIN_TONES, EYE_COLORS } from '../data/palette';
 import type { Appearance, HairStyle } from '../types';
@@ -18,9 +17,8 @@ import { saveNow } from '../store/persistence';
 import './hotel.css';
 
 function activePet() {
-  const s = useGame.getState();
-  const p = s.pets.find((x) => x.id === s.activePet) ?? s.pets.find((x) => x.species === 'unicornio');
-  return p ? { species: p.species, color: p.color, name: p.name, id: p.id } : null;
+  const p = useGame.getState().hotelPet;
+  return p ? { species: p.species, color: p.color, name: p.name, id: 'hotel-pet' } : null;
 }
 
 // --------------------------------------------------------------------------
@@ -28,7 +26,7 @@ export function Hotel() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const low = useMemo(() => document.createElement('canvas'), []);
   const screen = useGame((s) => s.screen);
-  const [panel, setPanel] = useState<null | 'nav' | 'cat' | 'look' | 'room' | 'invite' | 'gift'>(null);
+  const [panel, setPanel] = useState<null | 'nav' | 'cat' | 'look' | 'room' | 'invite' | 'gift' | 'pet'>(null);
   const giftDay = useGame((s) => s.hotelGiftDay);
   const [menu, setMenu] = useState<null | { kind: 'furni' | 'bot' | 'pet'; id: string }>(null);
   const [, force] = useState(0);
@@ -39,7 +37,6 @@ export function Hotel() {
   // primeira vez: garante o Purpurina e entra no último quarto
   useEffect(() => {
     const s = useGame.getState();
-    if (!s.pets.length) { const p = s.adoptPet('unicornio', '#ffffff'); s.updatePet(p.id, { name: 'Purpurina', accessory: 'laco', accColor: '#ff5fa2' }); }
     if (!s.hotelRooms.length) s.set({ hotelRooms: [starterRoom()] });
     if ((s.hotelSeed ?? 0) < 2) {
       const have = new Set(useGame.getState().hotelRooms.map((r) => r.id));
@@ -359,6 +356,7 @@ export function Hotel() {
             <button className="h-tool" onClick={() => setPanel('nav')}><span>🏨</span>Quartos</button>
             <button className="h-tool" onClick={() => setPanel('cat')}><span>🛍️</span>Catálogo</button>
             <button className="h-tool" onClick={() => setPanel('look')}><span>👗</span>Visual</button>
+            <button className="h-tool" onClick={() => setPanel('pet')}><span>🐾</span>Pet</button>
             {own && <button className="h-tool" onClick={() => setPanel('room')}><span>🎨</span>Quarto</button>}
             {own && <button className="h-tool" onClick={() => setPanel('invite')}><span>👭</span>Convidar</button>}
             <button className="h-tool" onClick={() => emote('dance', 10)}><span>💃</span>Dançar</button>
@@ -379,6 +377,7 @@ export function Hotel() {
           {storePanel === 'help' && <HelpPanel />}
           {storePanel === 'photos' && <PhotosPanel />}
           {panel === 'invite' && <Invite close={() => setPanel(null)} />}
+          {panel === 'pet' && <PetPicker close={() => setPanel(null)} />}
           {panel === 'gift' && <DailyGift close={() => setPanel(null)} />}
         </>
       )}
@@ -421,15 +420,44 @@ function ContextMenu({ menu, close, useFurni, emote }: { menu: { kind: 'furni' |
       </div>
     );
   }
-  const pet = useGame.getState().pets.find((p) => p.id === menu.id);
+  const pet = useGame.getState().hotelPet;
   if (!pet) return null;
-  const def = PETS[pet.species];
+  const rideable = pet.species === 'unicornio' || pet.species === 'cavalo';
   return (
     <div className="h-menu" onPointerDown={(e) => e.stopPropagation()}>
-      <div className="h-menu-title">{def.icon} {pet.name}</div>
-      <button className="btn small pink" onClick={() => { hs.pet.happyUntil = hs.t + 2.5; hearts(hs.pet.x, hs.pet.y); g().petCare(pet.id, 'pet'); say('me', name, `Te amo, ${pet.name}! 💕`); sfx('sparkle'); close(); }}>🤲 Carinho</button>
-      {def.rideable && <button className="btn small lilac" onClick={() => { hs.mounted = !hs.mounted; hs.me.seat = null; sfx('sparkle'); close(); }}>{hs.mounted ? '🧍 Descer' : '🏇 Montar'}</button>}
+      <div className="h-menu-title">🐾 {pet.name}</div>
+      <button className="btn small pink" onClick={() => { hs.pet.happyUntil = hs.t + 2.5; hearts(hs.pet.x, hs.pet.y); say('me', name, `Te amo, ${pet.name}! 💕`); sfx('sparkle'); close(); }}>🤲 Carinho</button>
+      {rideable && <button className="btn small lilac" onClick={() => { hs.mounted = !hs.mounted; hs.me.seat = null; sfx('sparkle'); close(); }}>{hs.mounted ? '🧍 Descer' : '🏇 Montar'}</button>}
       <button className="btn small ghost" onClick={close}>✖</button>
+    </div>
+  );
+}
+
+// ------------------------- escolher o pet -------------------------
+const PET_OPTS: [string, string, string, string][] = [['unicornio', '🦄', 'Unicórnio', '#ffffff'], ['cachorro', '🐶', 'Cachorro', '#c8a27a'], ['gato', '🐱', 'Gato', '#ffb066'], ['coelho', '🐰', 'Coelho', '#ffffff'], ['cavalo', '🐴', 'Cavalo', '#8d5b3a'], ['porco', '🐷', 'Porquinho', '#ffb3c6'], ['ovelha', '🐑', 'Ovelha', '#ffffff'], ['galinha', '🐔', 'Galinha', '#ffffff']];
+function PetPicker({ close }: { close: () => void }) {
+  const pet = useGame((s) => s.hotelPet);
+  const set = (p: { species: string; color: string; name: string } | null) => { useGame.getState().set({ hotelPet: p }); hs.mounted = false; hs.pet.x = hs.me.x; hs.pet.y = hs.me.y + 1; sfx('pop'); };
+  return (
+    <div className="backdrop" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <div className="panel" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="panel-head"><span style={{ fontSize: 30 }}>🐾</span><h2>Meu bichinho</h2><button className="close" onClick={close}>✖</button></div>
+        <div className="panel-body">
+          <p className="muted">Escolha um bichinho para andar com você — ou nenhum!</p>
+          <div className="grid">
+            <button className={`card ${!pet ? 'on' : ''}`} onClick={() => set(null)}><div className="ic">🚫</div><div className="nm">Nenhum</div></button>
+            {PET_OPTS.map(([sp, ic, n, c]) => <button key={sp} className={`card ${pet?.species === sp ? 'on' : ''}`} onClick={() => set({ species: sp, color: pet?.species === sp ? pet.color : c, name: pet?.species === sp ? pet.name : sp === 'unicornio' ? 'Purpurina' : n })}><div className="ic">{ic}</div><div className="nm">{n}</div></button>)}
+          </div>
+          {pet && (
+            <>
+              <div className="section">Nome</div>
+              <input value={pet.name} maxLength={14} onChange={(e) => useGame.getState().set({ hotelPet: { ...pet, name: e.target.value } })} style={{ fontSize: 18, padding: '6px 12px', borderRadius: 14, border: '3px solid #ffd6e8', width: '100%' }} />
+              <div className="section">Cor</div>
+              <div className="swatches">{['#ffffff', '#c8a27a', '#8d5b3a', '#2b2d42', '#ffb066', '#f2d27a', '#ffd6e8', '#d4b8ff', '#c7e5ff', '#9aa0a6'].map((c) => <button key={c} className={`sw ${c === pet.color ? 'on' : ''}`} style={{ background: c }} onClick={() => useGame.getState().set({ hotelPet: { ...pet, color: c } })} />)}</div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

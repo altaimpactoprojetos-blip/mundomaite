@@ -90,6 +90,8 @@ export interface SaveData {
   hotelGifts: string[];
   hotelGiftDay: string;
   hotelSeed: number;
+  hotelPet: { species: string; color: string; name: string } | null;
+  petChoice: number;
 }
 
 interface Transient {
@@ -197,6 +199,8 @@ export const initialSave = (): SaveData => ({
   hotelGifts: [],
   hotelGiftDay: '',
   hotelSeed: 0,
+  hotelPet: null,
+  petChoice: 1,
 });
 
 export const SAVE_KEYS = Object.keys(initialSave()) as (keyof SaveData)[];
@@ -231,6 +235,7 @@ export const useGame = create<GameState>()((set, get) => ({
       settings: { ...base.settings, ...(d.settings ?? {}) },
       parental: { ...base.parental, ...(d.parental ?? {}) },
     };
+    if (d.appearance && (d.petChoice ?? 0) < 1) { merged.activePet = null; merged.hotelPet = null; merged.petChoice = 1; }
     if (merged.quests.date !== todayKey()) merged.quests = { date: todayKey(), list: questsFor(todayKey()) };
     if (merged.parental.playedDate !== todayKey()) merged.parental = { ...merged.parental, playedDate: todayKey(), playedToday: 0 };
     set({ ...merged, loaded: true });
