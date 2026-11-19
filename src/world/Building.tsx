@@ -69,7 +69,8 @@ function BuildingImpl({ b }: { b: BuildingDef }) {
   const [w, h, d] = b.size;
   const roof = useRef<THREE.Group>(null!);
   const near = useNear(x, z, Math.max(w, d) / 2 + 28);
-  const mid = useNear(x, z, Math.max(w, d) / 2 + 90);
+  const lowQ = useGame((s) => s.settings.quality === 'baixa');
+  const mid = useNear(x, z, Math.max(w, d) / 2 + (lowQ ? 55 : 90));
   const night = useNight();
   const fixtures = useMemo(() => interiorFor(b.type, w, d), [b.type, w, d]);
   const sign = useMemo(() => signTexture(b.name, '#ffffff', '#e83e8c', b.icon), [b.name, b.icon]);
@@ -132,7 +133,7 @@ function BuildingImpl({ b }: { b: BuildingDef }) {
       </group>
       <group ref={extRef}>
         {mid && <Windows w={w} d={d} h={h} color={b.trim} lit={night} />}
-        {mid && <Facade w={w} d={d} h={h} trim={b.trim} roof={b.roof} lit={night} />}
+        {mid && !lowQ && <Facade w={w} d={d} h={h} trim={b.trim} roof={b.roof} lit={night} />}
       </group>
       {/* pilares nas quinas, rodapé e cornija */}
       <group ref={(g) => { if (g) cornerRef.current = g; }}>

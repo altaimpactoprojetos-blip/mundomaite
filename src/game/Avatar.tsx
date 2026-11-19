@@ -568,6 +568,7 @@ function AvatarLowImpl({ look, getAnim, anim = 'idle' }: Props) {
 }
 export const AvatarLow = memo(AvatarLowImpl);
 
+export const lodQuality = { q: 'media' as string };
 /** Escolhe a versão detalhada (perto) ou leve (longe) automaticamente */
 export function LodAvatar(props: Props2 & { near?: number }) {
   const g = useRef<THREE.Group>(null!);
@@ -580,7 +581,8 @@ export function LodAvatar(props: Props2 & { near?: number }) {
     acc.current = 0;
     g.current.getWorldPosition(wp.current);
     const d = wp.current.distanceTo(camera.position);
-    const lim = props.near ?? 16;
+    const q = lodQuality.q;
+    const lim = (props.near ?? 16) * (q === 'baixa' ? 0.6 : q === 'alta' ? 1.4 : 1);
     const want = hi ? d < lim * 1.15 : d < lim;
     if (want !== hi) setHi(want);
   });

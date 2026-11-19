@@ -326,7 +326,7 @@ export function Pedestrians() {
       const vis: number[] = [];
       sims.forEach((s, i) => { if (!s.hidden && Math.hypot(P.x - s.pos.x, P.z - s.pos.z) < renderR) vis.push(i); });
       // no celular, desenha só os mais próximos
-      const max = quality === 'baixa' ? 9 : 16;
+      const max = quality === 'baixa' ? 7 : 16;
       if (vis.length > max) vis.sort((a, b) => sims[a].pos.distanceTo(P) - sims[b].pos.distanceTo(P)).splice(max);
       if (vis.join() !== visible.join()) setVisible(vis.sort((a, b) => a - b));
     }

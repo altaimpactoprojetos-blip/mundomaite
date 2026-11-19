@@ -21,7 +21,8 @@ const F = (model: string, x: number, z: number, rot = 0, extra: Partial<Fixture>
 /** Conjunto de objetos no mundo (com colisão e interação), desenhados só quando a jogadora está perto. */
 export function WorldSet({ id, x, z, fixtures, r = 70, children }: { id: string; x: number; z: number; fixtures: Fixture[]; r?: number; children?: React.ReactNode }) {
   useFixtureLogic(`ws-${id}`, fixtures, x, 0, z, 0);
-  const near = useNear(x, z, r);
+  const lowQ = useGame((s) => s.settings.quality === 'baixa');
+  const near = useNear(x, z, lowQ && r < 1000 ? r * 0.7 : r);
   if (!near) return null;
   return <group position={[x, 0, z]}><FixtureMeshes fixtures={fixtures} />{children}</group>;
 }

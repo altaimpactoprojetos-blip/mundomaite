@@ -277,3 +277,9 @@ input, textarea { font-family: inherit; }
 .tabs.wrap { flex-wrap: wrap; overflow: visible; }
 .editor-foot { display: flex; gap: 8px; padding: 8px 14px 12px; border-top: 3px dashed #ffd6e8; }
 .editor-foot .btn { flex: 1; }
+@media (max-height: 500px) {
+  .tour { max-width: 30vw; padding: 5px 8px; font-size: 11px; top: calc(48px + var(--safe-t)); }
+  .tour .step { font-size: 13px; }
+  .tour .btn.small { font-size: 11px; padding: 3px 8px; }
+  .tour .row span { font-size: 11px !important; }
+}

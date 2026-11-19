@@ -14,10 +14,12 @@ import { Tasks } from './Tasks';
 import { Tour } from './Tour';
 import { useGame } from '../store/gameStore';
 import { rt } from '../systems/runtime';
+import { lodQuality } from './Avatar';
 
 export function Scene() {
   const quality = useGame((s) => s.settings.quality);
   const pixel = useGame((s) => s.settings.pixel);
+  lodQuality.q = quality;
   const base: [number, number] = quality === 'baixa' ? [1, 1.25] : quality === 'media' ? [1, 1.5] : [1, 2];
   // modo pixel (estilo Habbo): desenha em resolução baixa e amplia com pixels nítidos
   const dpr: [number, number] = pixel ? [0.7, 0.7] : base;
@@ -28,7 +30,8 @@ export function Scene() {
       key={pixel ? 'px' : 'hd'}
       gl={{ antialias: !pixel && quality !== 'baixa', powerPreference: 'high-performance', preserveDrawingBuffer: true }}
       camera={{ fov: 55, near: 0.2, far: 400, position: [80, 40, 60] }}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene }) => {
+        (window as unknown as { __scene: unknown }).__scene = scene;
         gl.toneMapping = THREE.NeutralToneMapping;
         gl.toneMappingExposure = 1.0;
         rt.canvas = gl.domElement;
