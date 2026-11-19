@@ -59,7 +59,8 @@ export interface ShopItem {
 }
 
 export type TextureKind =
-  | 'liso' | 'madeira' | 'tijolo' | 'listras' | 'bolinhas' | 'xadrez' | 'estrelas' | 'coracoes' | 'marmore' | 'grama' | 'azulejo' | 'nuvens';
+  | 'liso' | 'madeira' | 'tijolo' | 'listras' | 'bolinhas' | 'xadrez' | 'estrelas' | 'coracoes' | 'marmore' | 'grama' | 'azulejo' | 'nuvens'
+  | 'asfalto' | 'calcada' | 'telha' | 'siding' | 'reboco' | 'pedra' | 'areia' | 'gramado';
 
 export interface PlacedObject {
   id: string;

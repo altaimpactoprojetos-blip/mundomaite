@@ -10,6 +10,7 @@ import { PETS } from '../data/pets';
 import { VEHICLES } from '../data/vehicles';
 import { sfx } from '../systems/audio';
 import { TOUR } from '../data/tour';
+import { starterRoom, type HotelRoom } from '../hotel/rooms';
 
 export type PanelId =
   | 'character' | 'shop' | 'house' | 'build' | 'vehicles' | 'pets' | 'map' | 'settings' | 'bag' | 'jobs'
@@ -82,6 +83,9 @@ export interface SaveData {
   tourDone: number;
   houseLights: Record<string, boolean>;
   schoolBoard: string | null;
+  mode: 'hotel' | 'mundo';
+  hotelRooms: HotelRoom[];
+  hotelLast: string;
 }
 
 interface Transient {
@@ -183,6 +187,9 @@ export const initialSave = (): SaveData => ({
   tourDone: 0,
   houseLights: {},
   schoolBoard: null,
+  mode: 'hotel',
+  hotelRooms: [starterRoom()],
+  hotelLast: 'quarto-maite',
 });
 
 export const SAVE_KEYS = Object.keys(initialSave()) as (keyof SaveData)[];

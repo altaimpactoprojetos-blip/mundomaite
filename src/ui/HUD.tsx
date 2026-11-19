@@ -172,6 +172,7 @@ export function HUD() {
         <Zone />
       </div>
       <div className="menu-quick">
+        <button className="round" onClick={() => useGame.getState().set({ mode: 'hotel', panel: null })}>🏨<small>Hotel</small></button>
         <button className="round" onClick={() => openPanel('map')}>🗺️<small>Mapa</small></button>
         <button className="round" onClick={() => openPanel('bag')}>🎒<small>Mochila</small></button>
         <button className="round" style={menuOpen || questReady ? { background: '#ffd6e8' } : undefined} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? '✖' : '☰'}<small>Menu</small></button>

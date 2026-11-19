@@ -42,7 +42,8 @@ export function TitleScreen() {
         <p>Um universo inteiro para imaginar, criar e brincar.</p>
       </div>
       <div className="title-menu">
-        <button className="btn pink play" onClick={() => enterGame(null)}>▶ Jogar</button>
+        <button className="btn yellow play" onClick={() => useGame.getState().set({ mode: 'hotel', screen: 'title' })}>🏨 Voltar ao Hotel da Maitê</button>
+        <button className="btn pink play" onClick={() => enterGame(null)}>▶ Jogar no Mundo 3D</button>
         <button className="btn lilac play" style={{ fontSize: 18, padding: 10 }} onClick={() => { enterGame(null); setTimeout(() => startTour(), 50); }}>🦄 Um passeio com Purpurina</button>
         {ITEMS.map((i) => (
           <button key={i.label} className="btn" onClick={() => enterGame(i.id)}><span className="i">{i.icon}</span>{i.label}</button>

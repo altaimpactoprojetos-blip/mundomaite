@@ -1,7 +1,7 @@
 import { BUILDINGS, PROPERTIES } from '../data/world';
 import { Building } from './Building';
 import { House } from './House';
-import { DayNight, Ground } from './Environment';
+import { DayNight, Ground, Sky } from './Environment';
 import { Nature } from './Nature';
 import { Plaza, Beach, Port, Condo, Castle, FutureCity, Airport, Islands } from './Zones';
 import { AmusementPark, Farm } from './Park';
@@ -12,6 +12,7 @@ export function World() {
   return (
     <>
       <DayNight />
+      <Sky />
       <Ground />
       <Nature />
       <CityDetails />

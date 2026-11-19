@@ -4,13 +4,22 @@ import type { TextureKind } from '../types';
 // Texturas desenhadas em canvas (funcionam offline, sem arquivos).
 const cache = new Map<string, THREE.Texture>();
 
+function noise(g: CanvasRenderingContext2D, S: number, n: number, rgb: [number, number, number], a: number, size = 2) {
+  for (let i = 0; i < n; i++) {
+    const v = Math.random();
+    g.fillStyle = `rgba(${rgb[0] * v | 0},${rgb[1] * v | 0},${rgb[2] * v | 0},${a * Math.random()})`;
+    g.fillRect(Math.random() * S, Math.random() * S, size, size);
+  }
+}
+
 function make(kind: TextureKind): THREE.Texture | null {
   if (kind === 'liso') return null;
+  const S = ['grama', 'gramado', 'asfalto', 'areia', 'reboco'].includes(kind) ? 256 : 128;
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
+  c.width = c.height = S;
   const g = c.getContext('2d')!;
   g.fillStyle = '#ffffff';
-  g.fillRect(0, 0, 128, 128);
+  g.fillRect(0, 0, S, S);
   const dark = 'rgba(0,0,0,0.18)';
   const light = 'rgba(255,255,255,0.7)';
   switch (kind) {
@@ -21,6 +30,7 @@ function make(kind: TextureKind): THREE.Texture | null {
         g.strokeStyle = 'rgba(0,0,0,0.2)';
         g.beginPath(); g.moveTo(0, i * 16); g.lineTo(128, i * 16); g.stroke();
         g.beginPath(); g.moveTo(((i * 37) % 128), i * 16); g.lineTo(((i * 37) % 128), i * 16 + 16); g.stroke();
+        for (let k = 0; k < 3; k++) { g.strokeStyle = 'rgba(80,40,0,0.08)'; g.beginPath(); g.moveTo(0, i * 16 + 4 + k * 4); g.bezierCurveTo(40, i * 16 + 2 + k * 4, 80, i * 16 + 7 + k * 4, 128, i * 16 + 4 + k * 4); g.stroke(); }
       }
       break;
     case 'tijolo':
@@ -28,6 +38,7 @@ function make(kind: TextureKind): THREE.Texture | null {
       for (let r = 0; r < 8; r++) {
         g.fillRect(0, r * 16, 128, 2);
         for (let k = 0; k < 4; k++) g.fillRect(((k * 32 + (r % 2) * 16) % 128), r * 16, 2, 16);
+        for (let k = 0; k < 4; k++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; g.fillRect(((k * 32 + (r % 2) * 16) % 128) + 2, r * 16 + 2, 30, 14); g.fillStyle = 'rgba(0,0,0,0.25)'; }
       }
       break;
     case 'listras':
@@ -61,7 +72,16 @@ function make(kind: TextureKind): THREE.Texture | null {
       for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(Math.random() * 128, 0); g.bezierCurveTo(Math.random() * 128, 40, Math.random() * 128, 90, Math.random() * 128, 128); g.stroke(); }
       break;
     case 'grama':
-      for (let i = 0; i < 500; i++) { g.fillStyle = `rgba(0,${80 + Math.random() * 80},0,0.2)`; g.fillRect(Math.random() * 128, Math.random() * 128, 2, 5); }
+    case 'gramado':
+      // vários tons + folhinhas
+      noise(g, S, 1800, [60, 140, 40], 0.35, 4);
+      for (let i = 0; i < 1400; i++) {
+        const x = Math.random() * S, y = Math.random() * S;
+        g.strokeStyle = Math.random() < 0.5 ? `rgba(20,${90 + Math.random() * 60 | 0},20,0.35)` : `rgba(255,255,200,${Math.random() * 0.25})`;
+        g.lineWidth = 1.2;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - 0.5) * 3, y - 3 - Math.random() * 4); g.stroke();
+      }
+      if (kind === 'gramado') { g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(0, 0, S, S / 2); }
       break;
     case 'azulejo':
       g.strokeStyle = 'rgba(0,0,0,0.25)';
@@ -75,11 +95,60 @@ function make(kind: TextureKind): THREE.Texture | null {
       g.fillStyle = '#cfcfcf';
       g.fillRect(0, 0, 128, 128);
       break;
+    case 'asfalto':
+      noise(g, S, 6000, [255, 255, 255], 0.25, 2);
+      noise(g, S, 3000, [0, 0, 0], 0.35, 2);
+      for (let i = 0; i < 4; i++) { g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(Math.random() * S, Math.random() * S); for (let k = 0; k < 5; k++) g.lineTo(Math.random() * S, Math.random() * S); g.stroke(); }
+      break;
+    case 'calcada':
+      noise(g, S, 600, [0, 0, 0], 0.12, 2);
+      g.strokeStyle = 'rgba(0,0,0,0.22)';
+      g.lineWidth = 2;
+      for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32, S); g.stroke(); g.beginPath(); g.moveTo(0, i * 32); g.lineTo(S, i * 32); g.stroke(); }
+      for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.06})`; g.fillRect(x * 32 + 1, y * 32 + 1, 30, 30); }
+      break;
+    case 'telha':
+      for (let r = 0; r < 8; r++) {
+        for (let k = 0; k < 9; k++) {
+          const x = k * 16 - (r % 2) * 8;
+          g.fillStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.1})`;
+          g.beginPath(); g.moveTo(x, r * 16); g.lineTo(x + 16, r * 16); g.lineTo(x + 16, r * 16 + 12); g.quadraticCurveTo(x + 8, r * 16 + 18, x, r * 16 + 12); g.fill();
+          g.strokeStyle = 'rgba(0,0,0,0.25)'; g.stroke();
+        }
+      }
+      break;
+    case 'siding':
+      for (let i = 0; i < 10; i++) {
+        const y = i * 12.8;
+        const gr = g.createLinearGradient(0, y, 0, y + 12.8);
+        gr.addColorStop(0, 'rgba(255,255,255,0.35)');
+        gr.addColorStop(1, 'rgba(0,0,0,0.16)');
+        g.fillStyle = gr;
+        g.fillRect(0, y, 128, 12.8);
+      }
+      break;
+    case 'reboco':
+      noise(g, S, 5000, [0, 0, 0], 0.07, 2);
+      noise(g, S, 3000, [255, 255, 255], 0.2, 3);
+      break;
+    case 'pedra':
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.fillRect(0, 0, 128, 128);
+      for (let i = 0; i < 14; i++) {
+        const x = (i % 4) * 32 + Math.random() * 6, y = Math.floor(i / 4) * 36 + Math.random() * 6;
+        g.fillStyle = `rgb(${200 + Math.random() * 40 | 0},${195 + Math.random() * 40 | 0},${185 + Math.random() * 40 | 0})`;
+        g.beginPath(); g.ellipse(x + 15, y + 15, 13 + Math.random() * 3, 12 + Math.random() * 3, Math.random(), 0, 7); g.fill();
+      }
+      break;
+    case 'areia':
+      noise(g, S, 7000, [160, 120, 60], 0.18, 2);
+      noise(g, S, 2000, [255, 255, 255], 0.35, 2);
+      break;
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 2;
+  t.anisotropy = 4;
   return t;
 }
 

@@ -19,6 +19,7 @@ import { Dialogue } from './ui/Dialogue';
 import { Overlays } from './ui/Overlays';
 import { Minigame } from './ui/minigames/Minigame';
 import { PetMenu } from './ui/PetMenu';
+import { Hotel } from './hotel/Hotel';
 import { todayKey } from './data/quests';
 
 function Toasts() {
@@ -94,8 +95,18 @@ export default function App() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+  const mode = useGame((s) => s.mode);
   if (!loaded) {
     return <div className="loading"><div className="spin">🌸</div>Carregando o Mundo da Maitê...</div>;
+  }
+  if (mode === 'hotel') {
+    return (
+      <>
+        <Hotel />
+        <div className="ui-layer"><Overlays /></div>
+        <Toasts />
+      </>
+    );
   }
   return (
     <>

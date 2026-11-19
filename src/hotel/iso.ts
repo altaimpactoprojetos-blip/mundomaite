@@ -1,0 +1,98 @@
+// Motor isométrico em pixel art (desenho 2D em resolução baixa, ampliado sem borrar)
+export const TW = 32; // largura do ladrilho
+export const TH = 16; // altura do ladrilho
+export const WALL_H = 76;
+
+export interface Cam { ox: number; oy: number }
+
+export function iso(cam: Cam, x: number, y: number, z = 0) {
+  return { x: Math.round(cam.ox + (x - y) * (TW / 2)), y: Math.round(cam.oy + (x + y) * (TH / 2) - z) };
+}
+export function tileAt(cam: Cam, sx: number, sy: number) {
+  const a = (sx - cam.ox) / (TW / 2);
+  const b = (sy - cam.oy) / (TH / 2);
+  return { x: (a + b) / 2, y: (b - a) / 2 };
+}
+
+const shadeCache = new Map<string, string>();
+/** Escurece (f<1) ou clareia (f>1) uma cor */
+export function shade(hex: string, f: number): string {
+  const k = hex + f;
+  const c = shadeCache.get(k);
+  if (c) return c;
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+  const n = parseInt(h, 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  if (f < 1) { r *= f; g *= f; b *= f; } else { r += (255 - r) * (f - 1); g += (255 - g) * (f - 1); b += (255 - b) * (f - 1); }
+  const out = `rgb(${r | 0},${g | 0},${b | 0})`;
+  shadeCache.set(k, out);
+  return out;
+}
+
+export function poly(g: CanvasRenderingContext2D, pts: { x: number; y: number }[], fill: string, stroke?: string) {
+  g.beginPath();
+  g.moveTo(pts[0].x + 0.5, pts[0].y + 0.5);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x + 0.5, pts[i].y + 0.5);
+  g.closePath();
+  g.fillStyle = fill;
+  g.fill();
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); }
+}
+
+/** Caixa isométrica (posição em ladrilhos, altura em pixels) com contorno */
+export function box(g: CanvasRenderingContext2D, cam: Cam, x: number, y: number, z: number, w: number, d: number, h: number, color: string, outline = true) {
+  const p = (a: number, b: number, c: number) => iso(cam, a, b, c);
+  const top = [p(x, y, z + h), p(x + w, y, z + h), p(x + w, y + d, z + h), p(x, y + d, z + h)];
+  const left = [p(x, y + d, z + h), p(x + w, y + d, z + h), p(x + w, y + d, z), p(x, y + d, z)];
+  const right = [p(x + w, y, z + h), p(x + w, y + d, z + h), p(x + w, y + d, z), p(x + w, y, z)];
+  const st = outline ? shade(color, 0.45) : undefined;
+  if (h > 0) {
+    poly(g, left, shade(color, 0.82), st);
+    poly(g, right, shade(color, 0.66), st);
+  }
+  poly(g, top, color, st);
+}
+
+/** Cilindro/disco isométrico (centro em ladrilhos, raio em ladrilhos) */
+export function cyl(g: CanvasRenderingContext2D, cam: Cam, cx: number, cy: number, z: number, r: number, h: number, color: string, outline = true) {
+  const c = iso(cam, cx, cy, z);
+  const rx = r * TW * 0.7, ry = r * TH * 0.7;
+  const st = outline ? shade(color, 0.45) : undefined;
+  if (h > 0) {
+    g.beginPath();
+    g.ellipse(c.x + 0.5, c.y + 0.5, rx, ry, 0, 0, Math.PI);
+    g.lineTo(c.x - rx + 0.5, c.y - h + 0.5);
+    g.ellipse(c.x + 0.5, c.y - h + 0.5, rx, ry, 0, Math.PI, 0, true);
+    g.closePath();
+    g.fillStyle = shade(color, 0.78);
+    g.fill();
+    if (st) { g.strokeStyle = st; g.stroke(); }
+  }
+  g.beginPath();
+  g.ellipse(c.x + 0.5, c.y - h + 0.5, rx, ry, 0, 0, Math.PI * 2);
+  g.fillStyle = color;
+  g.fill();
+  if (st) { g.strokeStyle = st; g.stroke(); }
+}
+
+/** Bola (folhagens, abajur...) */
+export function ball(g: CanvasRenderingContext2D, cam: Cam, cx: number, cy: number, z: number, r: number, color: string) {
+  const c = iso(cam, cx, cy, z);
+  const R = r * TW * 0.55;
+  g.beginPath();
+  g.arc(c.x + 0.5, c.y + 0.5, R, 0, Math.PI * 2);
+  g.fillStyle = color;
+  g.fill();
+  g.strokeStyle = shade(color, 0.5);
+  g.stroke();
+  g.beginPath();
+  g.arc(c.x - R * 0.35, c.y - R * 0.35, R * 0.35, 0, Math.PI * 2);
+  g.fillStyle = shade(color, 1.35);
+  g.fill();
+}
+
+/** Losango de ladrilho */
+export function tile(g: CanvasRenderingContext2D, cam: Cam, x: number, y: number, color: string, stroke?: string, z = 0) {
+  poly(g, [iso(cam, x, y, z), iso(cam, x + 1, y, z), iso(cam, x + 1, y + 1, z), iso(cam, x, y + 1, z)], color, stroke);
+}

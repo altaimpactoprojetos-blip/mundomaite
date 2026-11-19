@@ -1,0 +1,21 @@
+.hotel { position: fixed; inset: 0; background: #1e2a5a; overflow: hidden; }
+.hotel-canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none; }
+.h-top { position: absolute; top: calc(8px + var(--safe-t)); left: calc(8px + var(--safe-l)); right: calc(8px + var(--safe-r)); display: flex; gap: 6px; align-items: center; pointer-events: none; }
+.h-top > * { pointer-events: auto; }
+.h-chip { background: rgba(255,255,255,0.95); border-radius: 14px; padding: 6px 12px; font-weight: 800; box-shadow: var(--shadow); border: 3px solid #3b2a4a; }
+.h-btn { background: #fff; border: 3px solid #3b2a4a; border-radius: 12px; padding: 4px 10px; font-weight: 800; font-size: 16px; box-shadow: 0 3px 0 #3b2a4a; }
+.h-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px calc(8px + var(--safe-r)) calc(6px + var(--safe-b)) calc(8px + var(--safe-l)); background: linear-gradient(#4a3a7a, #3b2a5a); border-top: 3px solid #2b1a3a; display: flex; gap: 6px; align-items: center; overflow-x: auto; }
+.h-tool { flex: 0 0 auto; background: #fff; border: 3px solid #2b1a3a; border-radius: 14px; padding: 3px 9px; font-weight: 800; font-size: 12px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 3px 0 #2b1a3a; }
+.h-tool span { font-size: 22px; line-height: 1.1; }
+.h-tool:active { transform: translateY(2px); box-shadow: 0 1px 0 #2b1a3a; }
+.h-chat { flex: 1; min-width: 160px; display: flex; gap: 4px; }
+.h-chat input { flex: 1; min-width: 80px; font-size: 16px; padding: 6px 10px; border-radius: 12px; border: 3px solid #2b1a3a; font-family: inherit; }
+.h-menu { position: absolute; left: 50%; bottom: calc(76px + var(--safe-b)); transform: translateX(-50%); background: #fff; border: 3px solid #2b1a3a; border-radius: 18px; padding: 8px 10px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; max-width: 96vw; box-shadow: 0 5px 0 #2b1a3a; animation: pop2 0.15s; z-index: 5; }
+.h-menu-title { width: 100%; text-align: center; font-weight: 800; }
+.h-place { position: absolute; top: calc(58px + var(--safe-t)); left: 50%; transform: translateX(-50%); background: #fff; border: 3px solid #2b1a3a; border-radius: 16px; padding: 6px 10px; display: flex; gap: 6px; align-items: center; z-index: 5; max-width: 96vw; flex-wrap: wrap; justify-content: center; }
+.h-title { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(30, 20, 60, 0.35); padding: 16px; }
+@media (max-height: 500px) {
+  .h-tool { font-size: 10px; padding: 2px 7px; }
+  .h-tool span { font-size: 18px; }
+  .h-menu { bottom: calc(62px + var(--safe-b)); }
+}

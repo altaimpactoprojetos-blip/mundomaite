@@ -5,6 +5,7 @@ import { rt } from '../systems/runtime';
 import { useGame } from '../store/gameStore';
 import { ROADS, ZONES, SEA_Z, BEACH_Z, WATER_LEVEL, ISLANDS } from '../data/world';
 import { mat } from '../systems/materials';
+import { getTexture } from '../systems/textures';
 
 const DAY = new THREE.Color('#9ed9ff');
 const DUSK = new THREE.Color('#ffb38a');
@@ -45,6 +46,8 @@ export function DayNight() {
     const dusk = Math.max(0, 1 - Math.abs(h - 18.3) / 1.6) + Math.max(0, 1 - Math.abs(h - 6) / 1.4);
     tmp.copy(NIGHT).lerp(DAY, day).lerp(DUSK, Math.min(0.6, dusk * 0.6));
     scene.background = tmp.clone();
+    skyColors.horizon.copy(tmp).lerp(new THREE.Color('#ffffff'), 0.25 * day);
+    skyColors.top.copy(NIGHT).lerp(new THREE.Color('#3d8fef'), day).lerp(DUSK, Math.min(0.3, dusk * 0.3));
     if (scene.fog) (scene.fog as THREE.Fog).color.copy(tmp);
     const ang = ((h - 6) / 12) * Math.PI;
     const P = rt.player.pos;
@@ -84,17 +87,17 @@ export function Ground() {
   return (
     <group>
       {/* grama geral */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, -90]} receiveShadow material={mat('#6cc24a', { tex: 'grama', repeat: 120 })}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, -90]} receiveShadow material={mat('#6cc24a', { tex: 'gramado', repeat: 160 })}>
         <planeGeometry args={[820, 650]} />
       </mesh>
       {/* zonas coloridas */}
       {ZONES.filter((z) => z.id !== 'praia' && z.id !== 'porto').map((z) => (
-        <mesh key={z.id} rotation={[-Math.PI / 2, 0, 0]} position={[z.x, -0.01, z.z]} receiveShadow material={mat(z.ground)}>
+        <mesh key={z.id} rotation={[-Math.PI / 2, 0, 0]} position={[z.x, -0.01, z.z]} receiveShadow material={mat(z.ground, { tex: 'grama', repeat: Math.round(z.w / 6) })}>
           <planeGeometry args={[z.w - 4, z.d - 4]} />
         </mesh>
       ))}
       {/* areia */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, (BEACH_Z + SEA_Z) / 2]} receiveShadow material={mat('#f3d27a', { tex: 'grama', repeat: 40 })}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, (BEACH_Z + SEA_Z) / 2]} receiveShadow material={mat('#f3d27a', { tex: 'areia', repeat: 60 })}>
         <planeGeometry args={[820, SEA_Z - BEACH_Z]} />
       </mesh>
       {/* fundo do mar */}
@@ -137,13 +140,21 @@ function Sea() {
   return <mesh geometry={geo} material={m} rotation={[-Math.PI / 2, 0, 0]} position={[0, WATER_LEVEL, SEA_Z + 128]} />;
 }
 
+function texMat(kind: 'asfalto' | 'calcada', color: string, rx: number, ry: number) {
+  const t = getTexture(kind)!.clone();
+  t.needsUpdate = true;
+  t.repeat.set(rx, ry);
+  return new THREE.MeshStandardMaterial({ color, map: t, roughness: kind === 'asfalto' ? 0.95 : 0.85 });
+}
+
 function Roads() {
-  const road = mat('#3f434d');
-  const side = mat('#d4cfc6', { tex: 'azulejo', repeat: 1 });
   const line = mat('#ffffff', { emissive: 0.2 });
+  const curbM = mat('#bfbab2', { rough: 0.9 });
+  const yellow = mat('#ffcf33', { emissive: 0.2 });
   const dashes = useMemo(() => {
     const list: [number, number, number][] = [];
     for (const r of ROADS) {
+      if (r.w >= 12) continue; // avenida principal tem faixa amarela contínua
       const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1);
       const n = Math.floor(len / 6);
       const rot = Math.atan2(r.x2 - r.x1, r.z2 - r.z1);
@@ -154,6 +165,10 @@ function Roads() {
     }
     return list;
   }, []);
+  const mats = useMemo(() => ROADS.map((r) => {
+    const len = Math.hypot(r.x2 - r.x1, r.z2 - r.z1) + r.w;
+    return { road: texMat('asfalto', '#55595f', r.w / 6, len / 6), side: texMat('calcada', '#e6e0d6', (r.w + 5) / 2, len / 2) };
+  }), []);
   const inst = useRef<THREE.InstancedMesh>(null!);
   useEffect(() => {
     const o = new THREE.Object3D();
@@ -173,14 +188,75 @@ function Roads() {
         const rot = Math.atan2(r.x2 - r.x1, r.z2 - r.z1);
         return (
           <group key={i} position={[(r.x1 + r.x2) / 2, 0, (r.z1 + r.z2) / 2]} rotation={[0, rot, 0]}>
-            <mesh material={side} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]}><planeGeometry args={[r.w + 5, len + r.w]} /></mesh>
-            <mesh material={road} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.016, 0]} receiveShadow><planeGeometry args={[r.w, len + r.w]} /></mesh>
+            <mesh material={mats[i].side} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]} receiveShadow><planeGeometry args={[r.w + 5, len + r.w]} /></mesh>
+            <mesh material={mats[i].road} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.016, 0]} receiveShadow><planeGeometry args={[r.w, len + r.w]} /></mesh>
+            {/* meio-fio */}
+            {[-1, 1].map((sd) => <mesh key={sd} material={curbM} position={[sd * (r.w / 2 + 0.12), 0.06, 0]} scale={[0.25, 0.12, len - r.w]}><boxGeometry /></mesh>)}
+            {r.w >= 12 && [-0.18, 0.18].map((x) => <mesh key={x} material={yellow} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.03, 0]}><planeGeometry args={[0.18, len]} /></mesh>)}
+            {/* linhas brancas das bordas */}
+            {[-1, 1].map((sd) => <mesh key={`e${sd}`} material={line} rotation={[-Math.PI / 2, 0, 0]} position={[sd * (r.w / 2 - 0.25), 0.028, 0]}><planeGeometry args={[0.15, len]} /></mesh>)}
           </group>
         );
       })}
       <instancedMesh ref={inst} args={[undefined, undefined, dashes.length]} material={line}>
         <planeGeometry args={[1, 1]} />
       </instancedMesh>
+    </group>
+  );
+}
+
+// ---------------- Céu com degradê, nuvens e montanhas ----------------
+export const skyColors = { top: new THREE.Color('#4fa8ff'), horizon: new THREE.Color('#cfeaff') };
+export function Sky() {
+  const { camera } = useThree();
+  const g = useRef<THREE.Group>(null!);
+  const skyMat = useMemo(() => new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: skyColors.top }, horizon: { value: skyColors.horizon } },
+    vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 top; uniform vec3 horizon; varying vec3 vP; void main(){ float h = clamp(vP.y * 1.6, 0.0, 1.0); gl_FragColor = vec4(mix(horizon, top, pow(h, 0.7)), 1.0); }',
+  }), []);
+  const clouds = useMemo(() => {
+    const out: { x: number; y: number; z: number; s: number; parts: [number, number, number, number][] }[] = [];
+    let seed = 3;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 18; i++) {
+      const a = rnd() * Math.PI * 2, r = 180 + rnd() * 140;
+      const parts: [number, number, number, number][] = [];
+      const n = 4 + Math.floor(rnd() * 3);
+      for (let k = 0; k < n; k++) parts.push([(k - n / 2) * 7 + rnd() * 4, rnd() * 4, rnd() * 6 - 3, 8 + rnd() * 6]);
+      out.push({ x: Math.cos(a) * r, y: 70 + rnd() * 40, z: Math.sin(a) * r, s: 1 + rnd() * 0.8, parts });
+    }
+    return out;
+  }, []);
+  const cloudMat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff', emissive: '#e8f2ff', emissiveIntensity: 0.55, fog: false }), []);
+  const mountains = useMemo(() => {
+    const out: { a: number; h: number; w: number; c: string }[] = [];
+    for (let i = 0; i < 26; i++) out.push({ a: (i / 26) * Math.PI * 2 + Math.sin(i) * 0.1, h: 40 + ((i * 37) % 50), w: 70 + ((i * 23) % 50), c: i % 2 ? '#8fb7c9' : '#9cc4d4' });
+    return out;
+  }, []);
+  const cl = useRef<THREE.Group>(null!);
+  useFrame((_, dt) => {
+    g.current.position.copy(camera.position);
+    g.current.position.y = 0;
+    cl.current.rotation.y += dt * 0.004;
+  });
+  return (
+    <group ref={g}>
+      <mesh material={skyMat} scale={[700, 700, 700]} renderOrder={-1}><sphereGeometry args={[1, 24, 12]} /></mesh>
+      <group ref={cl}>
+        {clouds.map((c, i) => (
+          <group key={i} position={[c.x, c.y, c.z]} scale={c.s}>
+            {c.parts.map(([x, y, z, r], k) => <mesh key={k} material={cloudMat} position={[x, y, z]} scale={[r, r * 0.6, r * 0.8]}><sphereGeometry args={[1, 10, 8]} /></mesh>)}
+          </group>
+        ))}
+      </group>
+      {mountains.map((m, i) => (
+        <mesh key={i} position={[Math.cos(m.a) * 520, m.h / 2 - 4, Math.sin(m.a) * 520]} scale={[m.w, m.h, m.w * 0.6]}>
+          <coneGeometry args={[1, 1, 6]} />
+          <meshBasicMaterial color={m.c} fog={false} />
+        </mesh>
+      ))}
     </group>
   );
 }
