@@ -1,0 +1,10 @@
+{
+  "name": "Mundo da Maitê",
+  "short_name": "Maitê",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#ffe6f4",
+  "theme_color": "#ffb3d9",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
