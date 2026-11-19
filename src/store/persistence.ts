@@ -15,6 +15,8 @@ export async function loadGame() {
     } catch { /* sem armazenamento */ }
   }
   useGame.getState().hydrate(data ?? {});
+  // depois tenta a nuvem (se tiver algo mais novo de outro aparelho)
+  void import('./cloud').then(({ cloudPull, startCloudSync }) => cloudPull().finally(startCloudSync));
   const s = useGame.getState();
   rt.player.pos.set(...s.playerPos);
   rt.hour = s.hour;

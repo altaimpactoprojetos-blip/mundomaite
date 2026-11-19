@@ -28,6 +28,7 @@ export interface Settings {
   camSens: number;
   camMode: 'habbo' | 'livre';
   pixel: boolean;
+  cloud: boolean;
 }
 
 export interface Parental {
@@ -181,7 +182,7 @@ export const initialSave = (): SaveData => ({
   treasures: [],
   stats: {},
   mall: { stores: ['roupas', 'brinquedos', 'sorvete', 'livros'], lastCollect: Date.now() },
-  settings: { music: 0.35, sfx: 0.7, quality: mobile ? 'baixa' : 'media', timeSpeed: 1, fixedDay: false, minimap: true, camSens: 1, camMode: 'livre', pixel: false },
+  settings: { music: 0.35, sfx: 0.7, quality: mobile ? 'baixa' : 'media', timeSpeed: 1, fixedDay: false, minimap: true, camSens: 1, camMode: 'livre', pixel: false, cloud: true },
   parental: { pin: null, dailyLimit: 0, playedToday: 0, playedDate: todayKey(), creativeLocked: false },
   playerPos: [65, 0, 30],
   hour: 9,

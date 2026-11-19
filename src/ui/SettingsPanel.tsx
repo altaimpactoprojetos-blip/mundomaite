@@ -3,6 +3,7 @@ import { useGame } from '../store/gameStore';
 import { Panel } from './Panel';
 import { exportSave, importSave, wipeSave, saveNow } from '../store/persistence';
 import { setVolumes } from '../systems/audio';
+import { cloud, cloudPull, cloudPush, familyCode, setFamilyCode } from '../store/cloud';
 
 function PinGate({ onOk }: { onOk: () => void }) {
   const pin = useGame((s) => s.parental.pin);
@@ -55,6 +56,7 @@ function Parental() {
         <button className={`btn small ${creative ? 'mint' : ''}`} onClick={() => g().set({ creative: !creative })}>{creative ? '✅' : '⬜'} Modo criativo (dinheiro infinito)</button>
         <button className={`btn small ${parental.creativeLocked ? 'pink' : ''}`} onClick={() => g().setParental({ creativeLocked: !parental.creativeLocked })}>{parental.creativeLocked ? '🔒' : '🔓'} Só os pais mudam o modo</button>
       </div>
+      <CloudBox />
       <div className="section">💾 Progresso</div>
       <div className="row">
         <button className="btn small" onClick={async () => { await saveNow(); g().toast('Jogo salvo neste aparelho! 💾', '💾'); }}>💾 Salvar agora</button>
@@ -140,5 +142,34 @@ export function HelpPanel() {
         <p>🏝️ Pegue um barco e procure os <b>tesouros</b> nas ilhas secretas, no castelo e na floresta...</p>
       </div>
     </Panel>
+  );
+}
+
+function CloudBox() {
+  const on = useGame((s) => s.settings.cloud);
+  const [code, setCode] = useState(familyCode());
+  const [other, setOther] = useState('');
+  const [msg, setMsg] = useState('');
+  const g = useGame.getState;
+  return (
+    <div>
+      <div className="section">☁️ Salvar na nuvem (Supabase da família)</div>
+      <div className="row">
+        <button className={`btn small ${on ? 'mint' : ''}`} onClick={() => g().setSettings({ cloud: !on })}>{on ? '✅ Ligado' : '⬜ Desligado'}</button>
+        <button className="btn small" onClick={async () => { setMsg('Salvando...'); await cloudPush(); setMsg(cloud.status === 'ok' ? 'Salvo na nuvem! ☁️' : cloud.status === 'offline' ? 'Sem internet agora — salva quando voltar.' : 'Não consegui salvar agora.'); }}>☁️ Salvar agora</button>
+      </div>
+      <div className="muted" style={{ marginTop: 4 }}>Código da família (use em outro celular/computador para abrir o mesmo hotel). Guarde em segredo:</div>
+      <div className="row"><code style={{ fontSize: 15, background: '#f4ecfb', padding: '4px 8px', borderRadius: 8, userSelect: 'all' }}>{code}</code>
+        <button className="btn small" onClick={() => { void navigator.clipboard?.writeText(code); setMsg('Código copiado!'); }}>📋 Copiar</button></div>
+      <div className="row" style={{ marginTop: 6 }}>
+        <input placeholder="Colar código de outro aparelho" value={other} onChange={(e) => setOther(e.target.value)} style={{ flex: 1, minWidth: 180, fontSize: 15, padding: 6, borderRadius: 10, border: '3px solid #ffd6e8' }} />
+        <button className="btn small pink" disabled={other.trim().length < 20} onClick={async () => {
+          setFamilyCode(other); setCode(familyCode()); setMsg('Buscando...');
+          const okk = await cloudPull(true);
+          setMsg(okk ? 'Pronto! O hotel do outro aparelho chegou aqui 🎉' : 'Não achei progresso com esse código (ou sem internet).');
+        }}>📥 Usar este código</button>
+      </div>
+      {msg && <div className="muted">{msg}</div>}
+    </div>
   );
 }
