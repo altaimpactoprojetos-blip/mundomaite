@@ -599,18 +599,19 @@ function Preview({ look }: { look: Appearance }) {
       const c = ref.current;
       if (c) {
         const g = c.getContext('2d')!;
-        g.imageSmoothingEnabled = false;
+        g.setTransform(1, 0, 0, 1, 0, 0);
         g.clearRect(0, 0, c.width, c.height);
+        g.setTransform(6, 0, 0, 6, 0, 0);
         const t = performance.now() / 1000;
-        drawAvatar(g, 22, 58, look, 0, 'idle', t);
-        drawAvatar(g, 62, 58, look, 3, 'idle', t);
+        drawAvatar(g, 24, 70, look, 0, 'idle', t);
+        drawAvatar(g, 66, 70, look, 3, 'idle', t);
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [look]);
-  return <canvas ref={ref} width={84} height={64} style={{ width: 252, height: 192, imageRendering: 'pixelated', background: 'linear-gradient(#ffe3f1,#e0f1ff)', borderRadius: 18 }} />;
+  return <canvas ref={ref} width={540} height={456} style={{ width: 270, height: 228, background: 'linear-gradient(#ffe3f1,#e0f1ff)', borderRadius: 18 }} />;
 }
 
 function LookEditor({ close }: { close: () => void }) {
